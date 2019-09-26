@@ -176,7 +176,12 @@ timer_interrupt (struct intr_frame *args UNUSED)
      find thread to wake up
      move to ready list, 
      update global tick */
-
+  
+  //Check sleep list
+  if (global_ticks == timer_ticks()){
+    list_push_back(&ready_list, list_pop_front(&sleep_list));
+  }
+  
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

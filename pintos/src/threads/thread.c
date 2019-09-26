@@ -140,7 +140,7 @@ thread_sleep (int64_t ticks)
       if (global_ticks > ticks) 
 	global_ticks = ticks;
     }
-    // Sort the sleep list!*/ 
+    // Sort the sleep list! - list_entry */ 
     schedule();
     intr_set_level(old_level);
   }  

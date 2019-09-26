@@ -18,8 +18,6 @@ enum thread_status
    You can redefine this to whatever type you like. */
 typedef int tid_t;
 
-static int64_t global_ticks = 0; 
-
 #define TID_ERROR ((tid_t) -1)          /* Error value for tid_t. */
 
 /* Thread priorities. */
@@ -129,6 +127,7 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+void sleep_thread_yield (void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

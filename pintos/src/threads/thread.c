@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -55,7 +56,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-//static int64_t global_ticks = 0;   
+static int64_t global_ticks = 0;   
 // global ticks for wakeup_ticks 
 
 /* If false (default), use round-robin scheduler.
@@ -74,6 +75,20 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+
+/* Compare wakeup_ticks. Return true if a's wakeup_ticks is less
+   then b's wakeup_ticks. Otherwise, return false. */
+bool
+wakeup_less (const struct list_elem *a, const struct list_elem *b,
+             void *aux UNUSED)
+{
+  struct thread *A;
+  struct thread *B;
+  A = list_entry (a, struct thread, elem);
+  B = list_entry (b, struct thread, elem);
+  return A->wakeup_ticks < B->wakeup_ticks;
+}
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -354,6 +369,29 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
+/* Sleeping thread */
+void
+sleep_thread_yield (void)
+{
+  enum intr_level old_level;
+  //Check sleep list
+  if (global_ticks == timer_ticks()){
+    struct thread * a;
+    old_level = intr_disable();
+    list_push_back(&ready_list, list_pop_front(&sleep_list));
+    a = list_entry (list_back(&ready_list), struct thread, elem);
+    a->status = THREAD_READY;
+    intr_set_level(old_level);
+    //update global ticks
+    if (!list_empty(&sleep_list)) {
+      struct thread * b;
+      b = list_entry(list_head(&sleep_list), struct thread, elem);
+      global_ticks = b->wakeup_ticks;
+    }
+    else global_ticks = 0;
+  }
+}
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
@@ -464,7 +502,7 @@ kernel_thread (thread_func *function, void *aux)
   function (aux);       /* Execute the thread function. */
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void) 

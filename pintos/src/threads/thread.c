@@ -147,13 +147,19 @@ thread_sleep (int64_t ticks)
     //change the state of thread to BLOCKED
     //disable interrupt
     old_level = intr_disable();
+    //struct list_elem * rem = list_remove(t->elem);
+    
+
     t->status = THREAD_BLOCKED;
     //store the local tick to wake up
     t->wakeup_ticks = ticks;
+    
+    //if(!list_empty(&ready_list))
+    struct list_elem *fr = list_pop_front(&ready_list);
     //put thread in sleep list
-    list_insert_ordered(&sleep_list, &t->elem, wakeup_less, NULL);
+    list_insert_ordered(&sleep_list, fr, wakeup_less, NULL);
     //update the global tick
-    if (list_empty (&sleep_list)) 
+    if (global_ticks == 0) 
       global_ticks = ticks;
     else if (global_ticks > ticks) {
       global_ticks = ticks;
@@ -375,7 +381,7 @@ sleep_thread_yield (void)
 {
   enum intr_level old_level;
   //Check sleep list
-  if (global_ticks == timer_ticks()){
+  if ((global_ticks != 0) && (global_ticks <= timer_ticks())){
     struct thread * a;
     old_level = intr_disable();
     list_push_back(&ready_list, list_pop_front(&sleep_list));

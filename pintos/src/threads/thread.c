@@ -119,6 +119,8 @@ thread_start (void)
   /* Wait for the idle thread to initialize idle_thread. */
   sema_down (&idle_started);
 }
+
+/* */
 void 
 thread_sleep (int64_t ticks)
 {
@@ -132,19 +134,19 @@ thread_sleep (int64_t ticks)
     //store the local tick to wake up
     t->wakeup_ticks = ticks;
     //put thread in sleep list
-    list_push_back(&sleep_list, &t->elem);
+    list_insert_ordered(&sleep_list, &t->elem, wakeup_less, void);
     //update the global tick
     if (list_empty (&sleep_list)) 
       global_ticks = ticks;
-    else {
-      if (global_ticks > ticks) 
-	global_ticks = ticks;
+    else if (global_ticks > ticks) {
+      global_ticks = ticks;
     }
     // Sort the sleep list! - list_entry */ 
     schedule();
     intr_set_level(old_level);
   }  
 }
+
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void

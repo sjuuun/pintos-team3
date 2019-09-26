@@ -27,7 +27,8 @@ static struct list ready_list;
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
-
+// Define sleep list
+static struct list sleep_list;
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -92,7 +93,8 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
+  // initialize sleep list
+  list_init (&sleep_list);
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -116,7 +118,28 @@ thread_start (void)
   /* Wait for the idle thread to initialize idle_thread. */
   sema_down (&idle_started);
 }
-
+void 
+thread_sleep (int64_t ticks)
+{
+  struct thread *t = thread_current ();
+  enum intr_level old_level;  
+  if (t != idle_thread) {
+    //change the state of thread to BLOCKED
+    //disable interrupt
+    old_level = intr_disable();
+    t->thread_status = THREAD_BLOCKED;
+    //store the local tick to wake up
+    t->wakeup_ticks = ticks;
+    //put thread in sleep list
+    list_push_back(&sleep_list, &t->elem);
+   
+    /*Todo : update the global tick if necessary,
+      call schedule() 
+      Sort the sleep list!*/ 
+    intr_set_level(old_level);
+  }
+  
+}
 /* Called by the timer interrupt handler at each timer tick.
    Thus, this function runs in an external interrupt context. */
 void

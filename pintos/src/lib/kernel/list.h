@@ -178,4 +178,7 @@ void list_unique (struct list *, struct list *duplicates,
 struct list_elem *list_max (struct list *, list_less_func *, void *aux);
 struct list_elem *list_min (struct list *, list_less_func *, void *aux);
 
+/* wakeup_ticks */
+bool wakeup_less (const struct list_elem *a, const struct list_elem *b,
+                  void *aux UNUSED);
 #endif /* lib/kernel/list.h */

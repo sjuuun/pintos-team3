@@ -522,3 +522,15 @@ list_min (struct list *list, list_less_func *less, void *aux)
     }
   return min;
 }
+
+/* Compare wakeup_ticks. Return true if a's wakeup_ticks is less
+   then b's wakeup_ticks. Otherwise, return false. */
+bool
+wakeup_less (const struct list_elem *a, const struct list_elem *b,
+             void *aux UNUSED)
+{
+  struct thread *A, B;
+  A = list_entry (a, struct thread, elem);
+  B = list_entry (b, struct thread, elem);
+  return A->wakeup_ticks < B->wakeup_ticks;
+}

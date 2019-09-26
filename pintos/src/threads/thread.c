@@ -154,10 +154,11 @@ thread_sleep (int64_t ticks)
     //store the local tick to wake up
     t->wakeup_ticks = ticks;
     
+    list_remove (&(t->elem));
     //if(!list_empty(&ready_list))
-    struct list_elem *fr = list_pop_front(&ready_list);
+    //struct list_elem *fr = list_pop_front(&ready_list);
     //put thread in sleep list
-    list_insert_ordered(&sleep_list, fr, wakeup_less, NULL);
+    list_insert_ordered(&sleep_list, &(t->elem), wakeup_less, NULL);
     //update the global tick
     if (global_ticks == 0) 
       global_ticks = ticks;

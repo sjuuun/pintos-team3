@@ -165,7 +165,7 @@ timer_print_stats (void)
 {
   printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
@@ -176,12 +176,23 @@ timer_interrupt (struct intr_frame *args UNUSED)
      find thread to wake up
      move to ready list, 
      update global tick */
-  
+  enum intr_level old_level;
   //Check sleep list
   if (global_ticks == timer_ticks()){
+    struct thread * a;
+    old_level = intr_disable();
     list_push_back(&ready_list, list_pop_front(&sleep_list));
+    a = list_entry (ready_list->tail, struct thread, elem);
+    a->status = THREAD_READY;
+    intr_set_level(old_level);
+    //update global ticks
+    if (!list_empty(&sleep_list)) {
+      struct thread * b;
+      b = list_entry(list_head(&sleep_list), struct thread, elem);
+      global_ticks = b->wakeup_ticks;
+    }
+    else global_ticks = 0;  
   }
-  
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

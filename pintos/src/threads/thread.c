@@ -55,7 +55,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-int64_t global_ticks = 0;   // global ticks for wakeup_ticks 
+static int64_t global_ticks = 0;   // global ticks for wakeup_ticks 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */

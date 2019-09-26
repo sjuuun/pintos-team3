@@ -55,7 +55,9 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
-static int64_t global_ticks = 0;   // global ticks for wakeup_ticks 
+//static int64_t global_ticks = 0;   
+// global ticks for wakeup_ticks 
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -130,11 +132,11 @@ thread_sleep (int64_t ticks)
     //change the state of thread to BLOCKED
     //disable interrupt
     old_level = intr_disable();
-    t->thread_status = THREAD_BLOCKED;
+    t->status = THREAD_BLOCKED;
     //store the local tick to wake up
     t->wakeup_ticks = ticks;
     //put thread in sleep list
-    list_insert_ordered(&sleep_list, &t->elem, wakeup_less, void);
+    list_insert_ordered(&sleep_list, &t->elem, wakeup_less, NULL);
     //update the global tick
     if (list_empty (&sleep_list)) 
       global_ticks = ticks;

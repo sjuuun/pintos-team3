@@ -149,12 +149,11 @@ thread_sleep (int64_t ticks)
     old_level = intr_disable();
     //struct list_elem * rem = list_remove(t->elem);
     
-
+    schedule(); 
     t->status = THREAD_BLOCKED;
     //store the local tick to wake up
     t->wakeup_ticks = ticks;
-    
-    list_remove (&(t->elem));
+    //intr_set_level(old_level);
     //if(!list_empty(&ready_list))
     //struct list_elem *fr = list_pop_front(&ready_list);
     //put thread in sleep list
@@ -166,7 +165,6 @@ thread_sleep (int64_t ticks)
       global_ticks = ticks;
     }
     // Sort the sleep list! - list_entry */ 
-    schedule();
     intr_set_level(old_level);
   }  
 }

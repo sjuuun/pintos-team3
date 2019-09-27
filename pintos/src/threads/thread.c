@@ -78,6 +78,7 @@ static tid_t allocate_tid (void);
 
 /* Compare wakeup_ticks. Return true if a's wakeup_ticks is less
    then b's wakeup_ticks. Otherwise, return false. */
+
 bool
 wakeup_less (const struct list_elem *a, const struct list_elem *b,
              void *aux UNUSED)
@@ -140,22 +141,15 @@ thread_start (void)
 /* */
 void 
 thread_sleep (int64_t ticks)
-{
+{ 
+  intr_disable();  
   struct thread *t = thread_current ();
-  enum intr_level old_level;  
   if (t != idle_thread) {
     //change the state of thread to BLOCKED
     //disable interrupt
-    old_level = intr_disable();
-    //struct list_elem * rem = list_remove(t->elem);
-    
-    schedule(); 
     t->status = THREAD_BLOCKED;
     //store the local tick to wake up
     t->wakeup_ticks = ticks;
-    //intr_set_level(old_level);
-    //if(!list_empty(&ready_list))
-    //struct list_elem *fr = list_pop_front(&ready_list);
     //put thread in sleep list
     list_insert_ordered(&sleep_list, &(t->elem), wakeup_less, NULL);
     //update the global tick
@@ -164,9 +158,10 @@ thread_sleep (int64_t ticks)
     else if (global_ticks > ticks) {
       global_ticks = ticks;
     }
-    // Sort the sleep list! - list_entry */ 
-    intr_set_level(old_level);
-  }  
+    // Sort the sleep list! - list_entry */
+    schedule(); 
+  }
+  intr_enable();
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -374,7 +369,7 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
-/* Sleeping thread */
+/* Wake up sleeping thread */
 void
 sleep_thread_yield (void)
 {
@@ -390,7 +385,7 @@ sleep_thread_yield (void)
     //update global ticks
     if (!list_empty(&sleep_list)) {
       struct thread * b;
-      b = list_entry(list_head(&sleep_list), struct thread, elem);
+      b = list_entry(list_front(&sleep_list), struct thread, elem);
       global_ticks = b->wakeup_ticks;
     }
     else global_ticks = 0;

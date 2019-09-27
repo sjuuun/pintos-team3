@@ -172,7 +172,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  
   // Call sleeping thread
   sleep_thread_yield();
 }

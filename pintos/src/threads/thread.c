@@ -90,6 +90,7 @@ wakeup_less (const struct list_elem *a, const struct list_elem *b,
   return A->wakeup_ticks < B->wakeup_ticks;
 }
 
+/* Compare priority of threads. */
 bool 
 cmp_priority (const struct list_elem *a, const struct list_elem *b,
 	      void *aux UNUSED)
@@ -98,7 +99,7 @@ cmp_priority (const struct list_elem *a, const struct list_elem *b,
   struct thread *B;
   A = list_entry (a, struct thread, elem);
   B = list_entry (b, struct thread, elem);
-  return A->priority < B->priority;
+  return A->priority > B->priority;
 }
 
 

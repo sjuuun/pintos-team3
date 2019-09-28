@@ -90,6 +90,17 @@ wakeup_less (const struct list_elem *a, const struct list_elem *b,
   return A->wakeup_ticks < B->wakeup_ticks;
 }
 
+bool 
+cmp_priority (const struct list_elem *a, const struct list_elem *b,
+	      void *aux UNUSED)
+{
+  struct thread *A;
+  struct thread *B;
+  A = list_entry (a, struct thread, elem);
+  B = list_entry (b, struct thread, elem);
+  return A->priority < B->priority;
+}
+
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -259,7 +270,10 @@ thread_create (const char *name, int priority,
   /* ToDo : 
      - Compare the priorities of the current running thread & new one
      - Yield the CPU if new one has higher priority */
-
+  struct thread *cur = thread_current();
+  if (cur->priority < t->priority) {
+    thread_yield();
+  }
   return tid;
 }
 
@@ -390,6 +404,8 @@ sleep_thread_yield (void)
     list_push_back(&ready_list, list_pop_front(&sleep_list));
     a = list_entry (list_back(&ready_list), struct thread, elem);
     a->status = THREAD_READY;
+    // +) sort ready list in priority order
+    list_sort(&ready_list, cmp_priority, NULL);
     intr_set_level(old_level);
     //update global ticks
     if (!list_empty(&sleep_list)) {
@@ -425,7 +441,7 @@ thread_set_priority (int new_priority)
   thread_current ()->priority = new_priority;
   /* Todo :
      - Reorder the ready_list */
-  
+  list_sort (&ready_list, cmp_priority, NULL);  
 }
 
 /* Returns the current thread's priority. */

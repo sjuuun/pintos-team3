@@ -201,9 +201,30 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  sema_down (&lock->semaphore);
-  lock->holder = thread_current ();
+  struct thread * cur = thread_current();
+  struct thread * hold = lock->holder;
+  if(hold == NULL) {
+    sema_down (&lock->semaphore);
+    hold = cur;
+    cur->pr_origin = cur->priority;
+  }
+  else {
+    list_insert_ordered(&lock->semaphore->waiters, &(cur->elem),
+			cmp_priority, NULL);
+    list_insert_ordered(&hold->donation, &(cur->d_elem),
+			cmp_priority, NULL);
+    cur->pr_origin = cur->priority;
+    cur->wait_on_lock = lock;
+    hold->priority = list_entry(list_front(&hold->donation),
+					struct thread, d_elem)->priority;
+    // for nested donation
+    if (hold->wait_on_lock != NULL){
+      list_sort(&lock->semaphore->waiters, cmp_priority, NULL);
+      list_sort(&hold->donation, cmp_priority, NULL);
+      hold->priority = list_entry(list_front(&hold->donation),
+				  struct thread, d_elem)->priority;
+    }
+  }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false

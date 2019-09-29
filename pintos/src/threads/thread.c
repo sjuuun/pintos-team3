@@ -314,8 +314,10 @@ thread_unblock (struct thread *t)
   //list_push_back (&ready_list, &t->elem);
   /* insert thread in priority order */
   list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);
-
   t->status = THREAD_READY;
+  /*if(thread_current()->priority < t->priority) {
+    thread_yield();
+  }*/
   intr_set_level (old_level);
 }
 
@@ -447,8 +449,11 @@ thread_set_priority (int new_priority)
      - Reorder the ready_list */
   list_sort (&ready_list, cmp_priority, NULL);  
 
-  if (cur->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority)
-    thread_yield();
+  if (!list_empty(&ready_list)) {
+    if (cur->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
+      thread_yield();
+    }
+  }
 }
 
 /* Returns the current thread's priority. */

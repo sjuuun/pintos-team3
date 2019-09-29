@@ -404,9 +404,17 @@ sleep_thread_yield (void)
   if ((global_ticks != 0) && (global_ticks <= timer_ticks())){
     struct thread * a;
     old_level = intr_disable();
-    list_push_back(&ready_list, list_pop_front(&sleep_list));
-    a = list_entry (list_back(&ready_list), struct thread, elem);
-    a->status = THREAD_READY;
+    a = list_entry(list_front(&sleep_list), struct thread, elem);
+    while (a-> wakeup_ticks <= global_ticks) {
+      list_push_back(&ready_list, list_pop_front(&sleep_list));
+      //a = list_entry(list_back(&ready_list), struct thread, elem);
+      //a = list_entry (list_back(&ready_list), struct thread, elem);
+      a->status = THREAD_READY;
+      if (list_empty(&sleep_list)) {
+        break;
+      }
+      a = list_entry(list_front(&sleep_list), struct thread, elem);
+    }
     // +) sort ready list in priority order
     list_sort(&ready_list, cmp_priority, NULL);
     intr_set_level(old_level);

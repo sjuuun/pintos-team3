@@ -213,7 +213,7 @@ lock_acquire (struct lock *lock)
 			cmp_priority, NULL);
     list_insert_ordered(&hold->donation, &(cur->d_elem),
 			cmp_priority, NULL);
-    cur->pr_origin = cur->priority;
+    //cur->pr_origin = cur->priority;
     cur->wait_on_lock = lock;
     hold->priority = list_entry(list_front(&hold->donation),
 					struct thread, d_elem)->priority;
@@ -258,8 +258,32 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
-  sema_up (&lock->semaphore);
+  if (list_empty(&lock->semaphore->waiters)) {
+    lock->holder = NULL;
+    sema_up (&lock->semaphore);
+  }
+  else {
+    struct thread *cur = lock->holder;
+    struct thread *next;
+    struct list *cur_dona = &cur->donation;
+    struct list_elem *e;
+    struct list_elem * next_elem = list_pop_front(&lock->semaphore->waiters);
+    next = list_entry(next_elem, struct thread, elem);
+    lock->holder = next;
+    
+    for (e = list_begin(cur_dona); e != list_end(cur_dona); e = list_next(e)) {
+      if (lock == (list_entry (e, struct thread, d_elem))->wait_on_lock)
+        list_remove(e);
+    }
+    
+    next->wait_on_lock = NULL;
+
+    if (cur_dona == NULL)
+      cur->priority = cur->pr_origin;
+    else
+      cur->priority = list_entry(list_front(&cur->donation),
+                                  struct thread, d_elem)->priority;
+  }
 }
 
 /* Returns true if the current thread holds LOCK, false

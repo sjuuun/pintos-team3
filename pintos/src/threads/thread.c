@@ -439,7 +439,10 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  struct thread *cur = thread_current();
+  cur->pr_origin = new_priority; 
+  cur->priority = new_priority;
+ 
   /* Todo :
      - Reorder the ready_list */
   list_sort (&ready_list, cmp_priority, NULL);  
@@ -567,6 +570,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->pr_origin = priority;
   t->magic = THREAD_MAGIC;
   /* For priority donation */
   list_init(&t->donation);

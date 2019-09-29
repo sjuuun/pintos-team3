@@ -446,6 +446,9 @@ thread_set_priority (int new_priority)
   /* Todo :
      - Reorder the ready_list */
   list_sort (&ready_list, cmp_priority, NULL);  
+
+  if (cur->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority)
+    thread_yield();
 }
 
 /* Returns the current thread's priority. */

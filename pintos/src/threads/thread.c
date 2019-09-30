@@ -102,7 +102,6 @@ cmp_priority (const struct list_elem *a, const struct list_elem *b,
   return A->priority > B->priority;
 }
 
-
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S

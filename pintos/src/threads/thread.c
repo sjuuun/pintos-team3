@@ -450,7 +450,10 @@ thread_set_priority (int new_priority)
 {
   struct thread *cur = thread_current();
   cur->pr_origin = new_priority; 
-  cur->priority = new_priority;
+  
+  if (list_empty(&cur->donation)) {
+    cur->priority = new_priority;
+  }
  
   /* Todo :
      - Reorder the ready_list */

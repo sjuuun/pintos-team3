@@ -208,13 +208,13 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread * cur = thread_current();
   struct thread * hold = lock->holder;
-  //if(hold == NULL) {
+  if(hold == NULL) {
     sema_down (&lock->semaphore);
     lock->holder = cur;
-    //cur->pr_origin = cur->priority;
-  //}
-  /*else {
-    list_insert_ordered(&(&lock->semaphore)->waiters, &(cur->elem),
+    cur->pr_origin = cur->priority;
+  }
+  else {
+    /*list_insert_ordered(&(&lock->semaphore)->waiters, &(cur->elem),
 			cmp_priority, NULL);
     if (hold->priority < cur->priority) {
       list_insert_ordered(&hold->donation, &(cur->d_elem),
@@ -228,8 +228,10 @@ lock_acquire (struct lock *lock)
       list_sort(&hold->donation, cmp_priority, NULL);
       hold->priority = list_entry(list_front(&hold->donation),
 				  struct thread, d_elem)->priority;
-    }
-  }*/
+    }*/
+    sema_down(&lock->semaphore);
+    lock->holder = cur;
+  }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -263,11 +265,12 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  //if (list_empty(&(&lock->semaphore)->waiters)) {
+  if (list_empty(&(&lock->semaphore)->waiters)) {
     lock->holder = NULL;
     sema_up (&lock->semaphore);
-  //}
-  /*else {
+  }
+  else {
+/*
     struct thread *cur = lock->holder;
     struct thread *next;
     struct list *cur_dona = &cur->donation;
@@ -288,7 +291,10 @@ lock_release (struct lock *lock)
     else
       cur->priority = list_entry(list_front(&cur->donation),
                                   struct thread, d_elem)->priority;
-  }*/
+*/
+    lock->holder = NULL;
+    sema_up(&lock->semaphore);
+  }
 }
 
 /* Returns true if the current thread holds LOCK, false

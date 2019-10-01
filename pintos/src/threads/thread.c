@@ -65,6 +65,12 @@ static int64_t global_ticks = 0;
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+/* Load average for mlfqs */
+int load_avg;
+#define LOAD_AVG_MIN -20
+#define LOAD_AVG_MAX 20
+#define LOAD_AVG_DEFAULT 0
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -131,6 +137,9 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  /* Initialize for mlfqs */
+  load_avg = LOAD_AVG_DEFAULT;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -475,18 +484,41 @@ thread_get_priority (void)
   return thread_current ()->priority;
 }
 
+/* Set and get new priority for mlfqs */
+int
+thread_mlfqs_set_priority (void)
+{
+  struct thread *cur = thread_current();
+  cur->priority = PRI_MAX - (fix_to_int(div_fix_int(cur->recent_cpu, 4)) - (cur->nice * 2);
+  return cur->priority;
+}
+
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
   /* Not yet implemented. */
+  enum intr_level old_level;
+  struct thread *cur = thread_current();
+  
+  old_level = intr_disable();
+  ASSERT ((nice >= LOAD_AVG_MIN) && (nice <= LOAD_AVG_MAX));
+  cur->nice = nice;
+  thread_mlfqs_set_priority();
+  
+  if (!list_empty(&ready_list)) {
+    if (cur->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
+      thread_yield();
+    }
+  }
+
+  intr_set_level(old_level);
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
   return thread_current()->nice;
 }
 
@@ -494,16 +526,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fix_to_int(mul_fix_int(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return fix_to_int(mul_fix_int(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.

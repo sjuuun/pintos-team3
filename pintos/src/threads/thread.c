@@ -448,6 +448,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  ASSERT (!thread_mlfqs);
   struct thread *cur = thread_current();
   cur->pr_origin = new_priority; 
   
@@ -485,7 +486,7 @@ int
 thread_get_nice (void) 
 {
   /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
@@ -592,6 +593,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   /* For priority donation */
   list_init(&t->donation);
+  /* For advanced scheduler */
+  t->nice = 0;
+  t->recent_cpu = 0;
   list_push_back (&all_list, &t->allelem);
 }
 

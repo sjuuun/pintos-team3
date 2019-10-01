@@ -100,7 +100,11 @@ struct thread
     struct list donation;		/* List of donation thread's d_elem */
     struct list_elem d_elem;		/* donation element */
     struct lock * wait_on_lock;		/* pointer to lock which is waited */
-
+    
+    /* For advanced scheduler */
+    int nice;				
+    int recent_cpu;
+			
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -119,8 +123,6 @@ bool wakeup_less(const struct list_elem *a, const struct list_elem *b,
 		void *aux UNUSED);
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b,
 		void *aux UNUSED);
-
-
 
 void thread_init (void);
 void thread_start (void);

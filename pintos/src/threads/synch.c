@@ -209,27 +209,12 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread * cur = thread_current();
   struct thread * hold = lock->holder;
-  if(hold == NULL) {
+  // if thread_mlfqs true, do not activate donation
+  if(hold == NULL || thread_mlfqs) {
     lock->holder = cur;
-    //cur->pr_origin = cur->priority;
     sema_down (&lock->semaphore);
   }
   else {
-    /*list_insert_ordered(&(&lock->semaphore)->waiters, &(cur->elem),
-			cmp_priority, NULL);
-    if (hold->priority < cur->priority) {
-      list_insert_ordered(&hold->donation, &(cur->d_elem),
-			cmp_priority, NULL);
-      hold->priority = list_entry(list_front(&hold->donation),
-					struct thread, d_elem)->priority;
-    }
-    cur->wait_on_lock = lock;
-    if (hold->wait_on_lock != NULL){
-      list_sort(&(&lock->semaphore)->waiters, cmp_priority, NULL);
-      list_sort(&hold->donation, cmp_priority, NULL);
-      hold->priority = list_entry(list_front(&hold->donation),
-				  struct thread, d_elem)->priority;
-    }*/
     if (hold->priority < cur->priority) {
       list_insert_ordered(&hold->donation, &(cur->d_elem),
 			cmp_priority, NULL);
@@ -281,34 +266,12 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
-  if (list_empty(&(&lock->semaphore)->waiters)) {
+  // if thread_mlfqs TRUE, do not activate donation
+  if (list_empty(&(&lock->semaphore)->waiters) || thread_mlfqs) {
     lock->holder = NULL;
     sema_up (&lock->semaphore);
   }
   else {
-/*
-    struct thread *cur = lock->holder;
-    struct thread *next;
-    struct list *cur_dona = &cur->donation;
-    struct list_elem *e;
-    struct list_elem * next_elem = list_pop_front(&(&lock->semaphore)->waiters);
-    next = list_entry(next_elem, struct thread, elem);
-    lock->holder = next;
-    
-    for (e = list_begin(cur_dona); e != list_end(cur_dona); e = list_next(e)) {
-      if (lock == (list_entry (e, struct thread, d_elem))->wait_on_lock)
-        list_remove(e);
-    }
-    
-    next->wait_on_lock = NULL;
-
-    if (list_empty(cur_dona))
-      cur->priority = cur->pr_origin;
-    else
-      cur->priority = list_entry(list_front(&cur->donation),
-                                  struct thread, d_elem)->priority;
-*/
     struct thread *cur = lock->holder;
     struct thread *next;
     struct list *cur_dona = &cur->donation;

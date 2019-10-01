@@ -68,8 +68,7 @@ sema_down (struct semaphore *sema)
   old_level = intr_disable ();
   while (sema->value == 0) 
     {
-      /* Todo : insert thread at waiters list in order of priority */
-      //list_push_back (&sema->waiters, &thread_current ()->elem);
+      /* Insert thread at waiters list in order of priority */
       list_insert_ordered(&sema->waiters, &thread_current()->elem,
 					cmp_priority, NULL);
       thread_block ();
@@ -116,16 +115,11 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  /* Todo : sort the waiters list in order of priority */
+  /* Sort the waiters list in order of priority */
   if (!list_empty (&sema->waiters)) { 
     list_sort(&sema->waiters, cmp_priority, NULL);
     struct thread *t = list_entry (list_pop_front (&sema->waiters), struct thread, elem);
     thread_unblock (t);
-    /*if (t->priority > thread_current()->priority) {
-      thread_yield();
-    }*/
-    
-    //list_sort(&sema->waiters, cmp_priority, NULL);
   }
   sema->value++;
   thread_yield();
@@ -209,12 +203,12 @@ lock_acquire (struct lock *lock)
   ASSERT (!lock_held_by_current_thread (lock));
   struct thread * cur = thread_current();
   struct thread * hold = lock->holder;
-  // if thread_mlfqs true, do not activate donation
   if(hold == NULL) {
     lock->holder = cur;
     sema_down (&lock->semaphore);
   }
   else{
+  // if thread_mlfqs true, do not activate donation
     if (!thread_mlfqs){
       if (hold->priority < cur->priority) {
         list_insert_ordered(&hold->donation, &(cur->d_elem),
@@ -222,7 +216,6 @@ lock_acquire (struct lock *lock)
         hold->priority = list_entry(list_front(&hold->donation),
 	 				struct thread, d_elem)->priority;
       }
-    
       while (hold->wait_on_lock != NULL){
         struct lock *nest = hold->wait_on_lock;
         struct thread *neHold = nest->holder;
@@ -282,7 +275,7 @@ lock_release (struct lock *lock)
     next = list_entry(next_elem, struct thread, elem);
     lock->holder = next;
 
-    for (e = list_begin(cur_dona); e != list_end(cur_dona); e = list_next(e)) {
+    for (e = list_begin(cur_dona); e != list_end(cur_dona); e = list_next(e)){
       if (lock == (list_entry (e, struct thread, d_elem))->wait_on_lock)
         list_remove(e);
     }
@@ -372,8 +365,7 @@ cond_wait (struct condition *cond, struct lock *lock)
   
   sema_init (&waiter.semaphore, 0);
   waiter.priority = thread_get_priority();
-  /* Todo : insert thread at waiters list in order of priority */
-  //list_push_back (&cond->waiters, &waiter.elem);
+  /* Insert thread at waiters list in order of priority */
   list_insert_ordered(&cond->waiters, &waiter.elem, cmp_sema_priority, NULL);
   lock_release (lock);
   sema_down (&waiter.semaphore);
@@ -394,12 +386,10 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
-  /* Todo : Sort the waiters list in order of priority */
+  /* Sort the waiters list in order of priority */
   if (!list_empty (&cond->waiters)) { 
-    //list_sort(&cond->waiters, cmp_priority, NULL);
     sema_up (&list_entry (list_pop_front (&cond->waiters),
                           struct semaphore_elem, elem)->semaphore);
-    //list_sort(&cond->waiters, cmp_priority, NULL);
   }
 }
 

@@ -174,7 +174,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   // Call sleeping thread
   sleep_thread_yield();
-  
+  /* For mlfqs */ 
   if (thread_mlfqs) {
     mlfqs_interrupt();
   }

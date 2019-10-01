@@ -151,7 +151,7 @@ void thread_foreach (thread_action_func *, void *);
 int thread_get_priority (void);
 void thread_set_priority (int);
 
-/* Performs recalculate on thread t */
+/* For mlfqs, calculating priority, recent_cpu, load_avg */
 int mlfqs_calc_priority (struct thread *);
 int mlfqs_calc_recent_cpu (struct thread *);
 int mlfqs_calc_load_avg (void);

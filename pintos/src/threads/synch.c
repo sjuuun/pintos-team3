@@ -214,22 +214,24 @@ lock_acquire (struct lock *lock)
     lock->holder = cur;
     sema_down (&lock->semaphore);
   }
-  else {
-    if (hold->priority < cur->priority) {
-      list_insert_ordered(&hold->donation, &(cur->d_elem),
-			cmp_priority, NULL);
-      hold->priority = list_entry(list_front(&hold->donation),
-					struct thread, d_elem)->priority;
-    }
+  else{
+    if (!thread_mlfqs){
+      if (hold->priority < cur->priority) {
+        list_insert_ordered(&hold->donation, &(cur->d_elem),
+	  		cmp_priority, NULL);
+        hold->priority = list_entry(list_front(&hold->donation),
+	 				struct thread, d_elem)->priority;
+      }
     
-    while (hold->wait_on_lock != NULL){
-      struct lock *nest = hold->wait_on_lock;
-      struct thread *neHold = nest->holder;
-      list_sort(&(&nest->semaphore)->waiters, cmp_priority, NULL);
-      list_sort(&neHold->donation, cmp_priority, NULL);
-      neHold->priority = list_entry(list_front(&neHold->donation),
+      while (hold->wait_on_lock != NULL){
+        struct lock *nest = hold->wait_on_lock;
+        struct thread *neHold = nest->holder;
+        list_sort(&(&nest->semaphore)->waiters, cmp_priority, NULL);
+        list_sort(&neHold->donation, cmp_priority, NULL);
+        neHold->priority = list_entry(list_front(&neHold->donation),
 				  struct thread, d_elem)->priority;
-      hold = nest->holder;
+        hold = nest->holder;
+      }
     }
     cur->wait_on_lock = lock;
     sema_down(&lock->semaphore);

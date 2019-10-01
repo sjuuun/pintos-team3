@@ -210,7 +210,7 @@ lock_acquire (struct lock *lock)
   struct thread * cur = thread_current();
   struct thread * hold = lock->holder;
   // if thread_mlfqs true, do not activate donation
-  if(hold == NULL || thread_mlfqs) {
+  if(hold == NULL) {
     lock->holder = cur;
     sema_down (&lock->semaphore);
   }

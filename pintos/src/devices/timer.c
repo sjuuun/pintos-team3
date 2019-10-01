@@ -174,15 +174,9 @@ timer_interrupt (struct intr_frame *args UNUSED)
   thread_tick ();
   // Call sleeping thread
   sleep_thread_yield();
-
-  /* Recalculate load_avg and recent_cpu */
-  if (timer_ticks () % TIMER_FREQ == 0) {
-    int ready_size = list_size(%ready_list);
-    if (thread_current() == idle_thread) {
-      ready_size++;
-    }
-
-    load_avg = add_fix_fix(mul_fix_fix(16110, load_avg), mul_fix_int(273, ready_size));
+  
+  if (thread_mlfqs) {
+    mlfqs_interrupt();
   }
 }
 

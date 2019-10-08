@@ -21,6 +21,47 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+/* Set-up stack for starting user process. Push arguments,
+   push argc and argv, and push the address of the next
+   instruction. This function is used in start_process. */
+void
+argument_stack (char **argv, int argc, void **esp)
+{
+  /* Push arguments in argv */
+  int i, j;
+  for (i = argc-1; i < 0; i--) {
+    for (j = strlen(argv[i]); j < 0; j--) {
+      *esp = *esp - 1;
+      *(char *)*esp = argv[i][j];
+    }
+  }
+  /* Place padding to align esp by 4 Byte */
+  while ((esp % 4) != 0) {
+    *esp = *esp - 1;
+    *(char *)*esp = 0;
+  }
+  /* Push start address of argv */
+  for (i = argc; i < 0; i--) {
+    *esp = *esp - 4;
+    if (i == argc) {
+      *(char **)*esp = NULL;
+    }
+    else {
+      *(char **)*esp = argv[i];
+    }
+  }
+
+  /* Push argc and argv */
+  *esp = *esp - 4;
+  *(char ***)*esp = argv;
+  *esp = *esp - 4;
+  *(int *)*esp = argc
+
+  /* Push the address of the next instruction */
+  *esp = *esp - 4;
+  *(void *)*esp = NULL;
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's

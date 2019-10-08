@@ -36,7 +36,7 @@ argument_stack (char **argv, int argc, void **esp)
     }
   }
   /* Place padding to align esp by 4 Byte */
-  while ((esp % 4) != 0) {
+  while (((int)esp % 4) != 0) {
     *esp = *esp - 1;
     *(char *)*esp = 0;
   }
@@ -55,11 +55,11 @@ argument_stack (char **argv, int argc, void **esp)
   *esp = *esp - 4;
   *(char ***)*esp = argv;
   *esp = *esp - 4;
-  *(int *)*esp = argc
+  *(int *)*esp = argc;
 
   /* Push the address of the next instruction */
   *esp = *esp - 4;
-  *(void *)*esp = NULL;
+  *(void **)*esp = NULL;
 }
 
 /* Starts a new thread running a user program loaded from
@@ -82,12 +82,15 @@ process_execute (const char *file_name)
   /* Todo : Parse the file_name and deliver the first argument of it to 
 		thread_create below */
   char *save_ptr;
-  char *token = strtok_r(file_name, " ", &save_ptr);
+  char *cmd_line = palloc_get_page(0);
+  strlcpy (cmd_line, file_name, PGSIZE);
+  char *token = strtok_r(cmd_line, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+    palloc_free_page (cmd_line);
   return tid;
 }
 
@@ -107,17 +110,21 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   
   char *save_ptr;
-  char **token;
+  char **token = (char**) malloc(sizeof(char**));
   int count = 0;
-  for (token[i] = strtok_r(file_name, " ", &save_ptr); token[i] != NULL; i++)
-  success = load (token[0], &if_.eip, &if_.esp);
+  for (*token = strtok_r(file_name, " ", &save_ptr); 
+	*token != NULL; count++){
+    count++;
+    token++;
+  }
+  success = load (*token, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
   argument_stack(token, count+1, &if_.esp);
-  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its

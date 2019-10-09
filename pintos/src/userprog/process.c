@@ -21,6 +21,35 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+/* Tokenize command line for start_process. This function
+   will return list of (char *) which is pointing tokenized
+   command line. Also, count how many tokens in (int *) count. */
+char **
+argument_token (char *line, int *count)
+{
+  char *save_ptr;
+  char *token;
+  int size = 5;
+  *count = 0;
+  char *tmp[size];
+  char **parse = tmp;
+  //char **parse = (char **) malloc(sizeof(char *) * count);
+  for (token = strtok_r(line, " ", &save_ptr); 
+	     token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
+    parse[*count] = token;
+    (*count)++;
+    if (*count >= size) {
+      char *tmp[size * 2];
+      for (int j=0; j < *count; j++) {
+        tmp[j] = parse[j];
+      }
+      parse = tmp;
+      size *= 2;
+    }
+  }
+  return parse;
+}
+
 /* Set-up stack for starting user process. Push arguments,
    push argc and argv, and push the address of the next
    instruction. This function is used in start_process. */
@@ -109,21 +138,15 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   
-  char *save_ptr;
-  char **token = (char**) malloc(sizeof(char**));
-  int count = 0;
-  for (*token = strtok_r(file_name, " ", &save_ptr); 
-	*token != NULL; count++){
-    count++;
-    token++;
-  }
-  success = load (*token, &if_.eip, &if_.esp);
+  int count;
+  char **parse = argument_token(file_name, &count);
+  success = load (parse[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
-  argument_stack(token, count+1, &if_.esp);
+  argument_stack(parse, count, &if_.esp);
   hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in

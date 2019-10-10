@@ -21,35 +21,6 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
-/* Tokenize command line for start_process. This function
-   will return list of (char *) which is pointing tokenized
-   command line. Also, count how many tokens in (int *) count. */
-char **
-argument_token (char *line, int *count)
-{
-  char *save_ptr;
-  char *token;
-  int size = 5;
-  *count = 0;
-  char *tmp[size];
-  char **parse = tmp;
-  //char **parse = (char **) malloc(sizeof(char *) * count);
-  for (token = strtok_r(line, " ", &save_ptr); 
-	     token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
-    parse[*count] = token;
-    (*count)++;
-    if (*count >= size) {
-      char *tmp[size * 2];
-      for (int j=0; j < *count; j++) {
-        tmp[j] = parse[j];
-      }
-      parse = tmp;
-      size *= 2;
-    }
-  }
-  return parse;
-}
-
 /* Set-up stack for starting user process. Push arguments,
    push argc and argv, and push the address of the next
    instruction. This function is used in start_process. */
@@ -132,10 +103,9 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR) {
+  if (tid == TID_ERROR) 
     palloc_free_page (fn_copy); 
-    palloc_free_page (cmd_line);
-  }
+  palloc_free_page (cmd_line);
   return tid;
 }
 
@@ -184,6 +154,7 @@ start_process (void *file_name_)
   }
   argument_stack(parse, count, &if_.esp);
   hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  palloc_free_page (file_name);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its

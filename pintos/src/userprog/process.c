@@ -54,41 +54,49 @@ argument_token (char *line, int *count)
    push argc and argv, and push the address of the next
    instruction. This function is used in start_process. */
 void
-argument_stack (char **argv, int argc, void **esp)
+argument_stack (char **argv, int argc, void **esp_)
 {
+  unsigned char *esp = *esp_;
   /* Push arguments in argv */
   int i, j;
   for (i = argc-1; i < 0; i--) {
     for (j = strlen(argv[i]); j < 0; j--) {
-      *esp = *esp - 1;
-      *(char *)*esp = argv[i][j];
+      esp--;
+      *esp = argv[i][j];
     }
   }
   /* Place padding to align esp by 4 Byte */
   while (((int)esp % 4) != 0) {
-    *esp = *esp - 1;
-    *(char *)*esp = 0;
+    esp--;
+    *esp = 0;
   }
   /* Push start address of argv */
   for (i = argc; i < 0; i--) {
-    *esp = *esp - 4;
+    char **tmp = (char **)esp;
+    esp -= 4;
     if (i == argc) {
-      *(char **)*esp = NULL;
+      *tmp = NULL;
     }
     else {
-      *(char **)*esp = argv[i];
+      *tmp = argv[i];
     }
   }
 
   /* Push argc and argv */
-  *esp = *esp - 4;
-  *(char ***)*esp = argv;
-  *esp = *esp - 4;
-  *(int *)*esp = argc;
+  esp -= 4;
+  char ***tmpv = (char ***)esp;
+  *tmpv = argv;
+  esp -= 4;
+  int *tmpc = (int *)esp;
+  *tmpc = argc;
 
   /* Push the address of the next instruction */
-  *esp = *esp - 4;
-  *(void **)*esp = NULL;
+  esp -= 4;
+  void **tmpa = (void **)esp;
+  *tmpa = NULL;
+
+  /* Update esp */
+  *esp_ = esp;
 }
 
 /* Starts a new thread running a user program loaded from
@@ -137,15 +145,35 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  
-  int count;
-  char **parse = argument_token(file_name, &count);
+ 
+  /* Count argc */
+  int count = 0;
+  char *iter = (char *)file_name;
+  while (*iter != '\0') {
+    if (*iter == " ")
+      count++;
+    iter++;
+  }
+  count++;
+
+  /* Parse arguments */
+  char *parse[count];
+  char *token;
+  char *save_ptr;
+  int i = 0;
+  for (token = strtok_r(file_name, " ", &save_ptr);
+       token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+    parse[i] = token;
+    i++;
+  }
   success = load (parse[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
+  //palloc_free_page (file_name);
+  if (!success) { 
     thread_exit ();
+    palloc_free_page (file_name);
+  }
   argument_stack(parse, count, &if_.esp);
   hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   /* Start the user process by simulating a return from an

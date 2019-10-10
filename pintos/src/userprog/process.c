@@ -21,6 +21,84 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+/* Tokenize command line for start_process. This function
+   will return list of (char *) which is pointing tokenized
+   command line. Also, count how many tokens in (int *) count. */
+char **
+argument_token (char *line, int *count)
+{
+  char *save_ptr;
+  char *token;
+  int size = 5;
+  *count = 0;
+  char *tmp[size];
+  char **parse = tmp;
+  //char **parse = (char **) malloc(sizeof(char *) * count);
+  for (token = strtok_r(line, " ", &save_ptr); 
+	     token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
+    parse[*count] = token;
+    (*count)++;
+    if (*count >= size) {
+      char *tmp[size * 2];
+      for (int j=0; j < *count; j++) {
+        tmp[j] = parse[j];
+      }
+      parse = tmp;
+      size *= 2;
+    }
+  }
+  return parse;
+}
+
+/* Set-up stack for starting user process. Push arguments,
+   push argc and argv, and push the address of the next
+   instruction. This function is used in start_process. */
+void
+argument_stack (char **argv, int argc, void **esp_)
+{
+  unsigned char *esp = *esp_;
+  /* Push arguments in argv */
+  int i, j;
+  for (i = argc-1; i < 0; i--) {
+    for (j = strlen(argv[i]); j < 0; j--) {
+      esp--;
+      *esp = argv[i][j];
+    }
+  }
+  /* Place padding to align esp by 4 Byte */
+  while (((int)esp % 4) != 0) {
+    esp--;
+    *esp = 0;
+  }
+  /* Push start address of argv */
+  for (i = argc; i < 0; i--) {
+    char **tmp = (char **)esp;
+    esp -= 4;
+    if (i == argc) {
+      *tmp = NULL;
+    }
+    else {
+      *tmp = argv[i];
+    }
+  }
+
+  /* Push argc and argv */
+  esp -= 4;
+  char ***tmpv = (char ***)esp;
+  *tmpv = argv;
+  esp -= 4;
+  int *tmpc = (int *)esp;
+  *tmpc = argc;
+
+  /* Push the address of the next instruction */
+  esp -= 4;
+  void **tmpa = (void **)esp;
+  *tmpa = NULL;
+
+  /* Update esp */
+  *esp_ = esp;
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -37,11 +115,19 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  
+  /* Todo : Parse the file_name and deliver the first argument of it to 
+		thread_create below */
+  char *save_ptr;
+  char *cmd_line = palloc_get_page(0);
+  strlcpy (cmd_line, file_name, PGSIZE);
+  char *token = strtok_r(cmd_line, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+    palloc_free_page (cmd_line);
   return tid;
 }
 
@@ -59,13 +145,37 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+ 
+  /* Count argc */
+  int count = 0;
+  char *iter = (char *)file_name;
+  while (*iter != '\0') {
+    if (*iter == " ")
+      count++;
+    iter++;
+  }
+  count++;
+
+  /* Parse arguments */
+  char *parse[count];
+  char *token;
+  char *save_ptr;
+  int i = 0;
+  for (token = strtok_r(file_name, " ", &save_ptr);
+       token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+    parse[i] = token;
+    i++;
+  }
+  success = load (parse[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
+  //palloc_free_page (file_name);
+  if (!success) { 
     thread_exit ();
-
+    palloc_free_page (file_name);
+  }
+  argument_stack(parse, count, &if_.esp);
+  hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its

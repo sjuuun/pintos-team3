@@ -56,14 +56,16 @@ argument_token (char *line, int *count)
 void
 argument_stack (char **argv, int argc, void **esp_)
 {
-  unsigned char *esp = *esp_;
+  char *esp = *esp_;
+  char *arg_addr[argc];
   /* Push arguments in argv */
   int i, j;
-  for (i = argc-1; i < 0; i--) {
-    for (j = strlen(argv[i]); j < 0; j--) {
+  for (i = argc-1; i >= 0; i--) {
+    for (j = strlen(argv[i]); j >= 0; j--) {
       esp--;
       *esp = argv[i][j];
     }
+    arg_addr[i] = esp;
   }
   /* Place padding to align esp by 4 Byte */
   while (((int)esp % 4) != 0) {
@@ -71,29 +73,34 @@ argument_stack (char **argv, int argc, void **esp_)
     *esp = 0;
   }
   /* Push start address of argv */
-  for (i = argc; i < 0; i--) {
-    char **tmp = (char **)esp;
-    esp -= 4;
+  char **tmp = (char **)esp;
+  for (i = argc; i >= 0; i--) {
+    tmp--;
     if (i == argc) {
       *tmp = NULL;
     }
     else {
-      *tmp = argv[i];
+      *tmp = arg_addr[i];
     }
   }
+  esp = (char *)tmp;
 
   /* Push argc and argv */
-  esp -= 4;
   char ***tmpv = (char ***)esp;
-  *tmpv = argv;
-  esp -= 4;
+  tmpv--;
+  *tmpv = (char **)esp;
+  esp = (char *) tmpv;
+
   int *tmpc = (int *)esp;
+  tmpc--;
   *tmpc = argc;
+  esp = (char *) tmpc;
 
   /* Push the address of the next instruction */
-  esp -= 4;
   void **tmpa = (void **)esp;
+  tmpa--;
   *tmpa = NULL;
+  esp = (char *)tmpa;
 
   /* Update esp */
   *esp_ = esp;
@@ -125,9 +132,10 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
+  if (tid == TID_ERROR) {
     palloc_free_page (fn_copy); 
     palloc_free_page (cmd_line);
+  }
   return tid;
 }
 
@@ -150,7 +158,7 @@ start_process (void *file_name_)
   int count = 0;
   char *iter = (char *)file_name;
   while (*iter != '\0') {
-    if (*iter == " ")
+    if (*iter == ' ')
       count++;
     iter++;
   }

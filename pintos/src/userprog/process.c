@@ -81,14 +81,14 @@ argument_stack (char **argv, int argc, void **esp_)
 struct thread *
 get_child_process (tid_t tid)
 {
-  if (tid = TID_ERROR) {
+  if (tid == TID_ERROR) {
     return NULL;
   }
   struct thread *child;
-  struct list_elem *iter = list_front(&cur->child_list);
+  struct list_elem *iter = list_front(&thread_current()->child_list);
   while (iter != NULL) {
     child = list_entry(iter, struct thread, c_elem);
-    if (child->tid == child_tid) {
+    if (child->tid == tid) {
       break;
     }
     iter = list_next(iter);
@@ -203,10 +203,10 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  struct thread *cur = thread_current();
+  //struct thread *cur = thread_current();
   struct thread *child = get_child_process(child_tid);
 
-  if (child = NULL)
+  if (child == NULL)
     return -1;
   
   sema_down(&child->exit_sema);

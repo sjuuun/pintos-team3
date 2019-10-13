@@ -1,3 +1,4 @@
+#include "devices/shutdown.h"
 #include "userprog/syscall.h"
 #include "userprog/process.h"
 #include <stdio.h>
@@ -135,10 +136,11 @@ syscall_handler (struct intr_frame *f)
 
     case SYS_EXIT:
       exit(*((int *)esp + 1));
+      exit(0);
       break;
 
     case SYS_EXEC:
-      exec(*((char *)esp + 4));
+      exec(*((char **)esp + 1));
       break;
 
     case SYS_WAIT:

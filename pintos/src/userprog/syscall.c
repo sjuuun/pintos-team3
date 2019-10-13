@@ -26,7 +26,7 @@ exit (int status)
   /* Use void thread_exit(void) */
   struct thread *cur = thread_current();
   /* Save exit status at process descriptor */
-  printf("%s: exit (%d) \n", cur->name, status);
+  printf("%s: exit(%d)\n", cur->name, status);
   thread_exit();
 }
 
@@ -35,6 +35,7 @@ exec (const char *cmd_line)
 {
   /* Create child process and execute program */
   /* process_execute? */
+  return process_execute(cmd_line);
 }
 
 int
@@ -86,6 +87,8 @@ write (int fd, const void *buffer, unsigned size)
 {
   /* Use void putbuf(const char *burrer, size_t n) for fd = 1, otherwise
      use off_t file_write(struct file *file, const void *buffer, off_t size) */
+  if (fd == 1) {
+    putbuf(buffer, size);
 }
 
 void
@@ -112,7 +115,6 @@ close (int fd)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  printf ("system call!\n");
   //thread_exit ();
 
   void *esp = f->esp;
@@ -126,11 +128,11 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_EXIT:
-      //exit(int status);
+      exit(*((int *)esp + 1));
       break;
 
     case SYS_EXEC:
-      //exec(char *cmd_line);
+      exec(*((char *)esp + 4));
       break;
 
     case SYS_WAIT:

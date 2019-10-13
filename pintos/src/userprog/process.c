@@ -153,7 +153,7 @@ start_process (void *file_name_)
     palloc_free_page (file_name);
   }
   argument_stack(parse, count, &if_.esp);
-  hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -198,7 +198,7 @@ process_wait (tid_t child_tid)
   }
   
   sema_down(&child->exit_sema);
-  list_remove(iter);
+  //list_remove(iter);
   return child->exit;
 }
 

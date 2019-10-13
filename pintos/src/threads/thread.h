@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -12,6 +13,13 @@ enum thread_status
     THREAD_READY,       /* Not running but ready to run. */
     THREAD_BLOCKED,     /* Waiting for an event to trigger. */
     THREAD_DYING        /* About to be destroyed. */
+  };
+
+/* Status in a thread's exit_status. */
+enum exit_status
+  {
+    SUCCESS,		/* Process is successfully exited. */
+    FAILED		/* Process isn't exited successfully. */
   };
 
 /* Thread identifier type.
@@ -101,6 +109,12 @@ struct thread
     struct thread *parent;		/* Pointing to parent process. */
     struct list child_list;		/* List of child processes. */
     struct list_elem c_elem;		/* List element for siblings. */
+
+    /* Semaphore for exit and load. */
+    struct semaphore exit_sema;		/* Semaphore for exit. */
+    struct semaphore load_sema;		/* Semaphore for load. */
+
+    enum exit_status exit;		/* Exit_status.  */
 #endif
 
     /* Owned by thread.c. */

@@ -175,9 +175,31 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  return -1;
+  if (child_tid == TID_ERROR) {
+    return -1;
+  }
+
+  struct thread *cur = thread_current();
+  struct thread *child;
+  struct list_elem *iter = list_front(&cur->child_list);
+  while (iter != NULL) {
+    child = list_entry(iter, struct thread, c_elem);
+    if (child->tid == child_tid) {
+      break;
+    }
+    iter = list_next(iter);
+  }
+
+  /* If child_tid is not found. */
+  if (iter == NULL) {
+    return -1;
+  }
+  
+  sema_down(&child->exit_sema);
+  list_remove(iter);
+  return child->exit;
 }
 
 /* Free the current process's resources. */

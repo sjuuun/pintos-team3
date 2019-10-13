@@ -42,6 +42,7 @@ wait (pid_t pid)
 {
   /* Wait for termination of child process whose process id is pid */
   /* process_wait? */
+  return process_wait(pid);
 }
 
 /* System call handler functions - File related */
@@ -133,7 +134,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_WAIT:
-      //wait(pid_t pid);
+      wait(*((int *)esp + 1));
       break;
 
     /* File related system calls */

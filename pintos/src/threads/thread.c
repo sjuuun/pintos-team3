@@ -207,10 +207,17 @@ thread_create (const char *name, int priority,
   intr_set_level (old_level);
 
 #ifdef USERPROG
-  /* Process Hierarchy */
+  /* Process Hierarchy. */
   struct thread *cur = thread_current();
   t->parent = cur;
   list_push_back(&cur->child_list, &t->c_elem);
+
+  /* Initialize semaphore. */
+  sema_init(&t->exit_sema, 0);
+  sema_init(&t->load_sema, 0); 
+
+  /* Initialize exit_status. */
+  t->exit = FAILED;
 #endif
   
   /* Add to run queue. */
@@ -299,6 +306,9 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
+  thread_current()->parent = NULL;
+  thread_current()->exit = SUCCESS;
+  sema_up(&thread_current()->exit_sema);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,

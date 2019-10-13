@@ -96,6 +96,11 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    /* Process Hierarchy */
+    struct thread *parent;		/* Pointing to parent process. */
+    struct list child_list;		/* List of child processes. */
+    struct list_elem c_elem;		/* List element for siblings. */
 #endif
 
     /* Owned by thread.c. */

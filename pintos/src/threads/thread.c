@@ -206,6 +206,13 @@ thread_create (const char *name, int priority,
 
   intr_set_level (old_level);
 
+#ifdef USERPROG
+  /* Process Hierarchy */
+  struct thread *cur = thread_current();
+  t->parent = cur;
+  list_push_back(&cur->child_list, &t->c_elem);
+#endif
+  
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -468,6 +475,12 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+
+#ifdef USERPROG
+  t->parent = NULL;
+  list_init(&t->child_list);
+#endif
+
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

@@ -17,6 +17,7 @@ void
 halt (void)
 {
   /* Use void shutdown_power_off(void) */
+  shutdown_power_off();
 }
 
 void
@@ -111,7 +112,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   printf ("system call!\n");
-  thread_exit ();
+  //thread_exit ();
 
   void *esp = f->esp;
   int number = *(int *)esp;
@@ -120,7 +121,7 @@ syscall_handler (struct intr_frame *f)
   switch (number) {
     /* Process related system calls */
     case SYS_HALT:
-      //halt();
+      halt();
       break;
 
     case SYS_EXIT:

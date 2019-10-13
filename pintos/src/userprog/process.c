@@ -85,7 +85,11 @@ get_child_process (tid_t tid)
     return NULL;
   }
   struct thread *child;
-  struct list_elem *iter = list_front(&thread_current()->child_list);
+  struct list_elem *iter;
+  if (list_empty(&thread_current()->child_list))
+    return NULL;
+
+  iter = list_front(&thread_current()->child_list);
   while (iter != NULL) {
     child = list_entry(iter, struct thread, c_elem);
     if (child->tid == tid) {
@@ -152,8 +156,11 @@ start_process (void *file_name_)
   int count = 0;
   char *iter = (char *)file_name;
   while (*iter != '\0') {
-    if (*iter == ' ')
+    if (*iter == ' ') {
       count++;
+      while (*(iter+1) == ' ')
+        iter++;
+    }
     iter++;
   }
   count++;
@@ -172,13 +179,16 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   //palloc_free_page (file_name);
-  if (!success) { 
+  if (!success) {
+    thread_current()->load = FAILED;
+    sema_up(&thread_current()->load_sema);
     thread_exit ();
     palloc_free_page (file_name);
   }
   argument_stack(parse, count, &if_.esp);
   //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
+  thread_current()->load = SUCCESS;
   sema_up(&thread_current()->load_sema);
 
   /* Start the user process by simulating a return from an
@@ -210,7 +220,6 @@ process_wait (tid_t child_tid)
     return -1;
   
   sema_down(&child->exit_sema);
-  //list_remove(iter);
   return child->exit;
 }
 

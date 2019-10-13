@@ -218,6 +218,7 @@ thread_create (const char *name, int priority,
 
   /* Initialize exit_status. */
   t->exit = FAILED;
+  t->load = FAILED;
 #endif
   
   /* Add to run queue. */
@@ -306,6 +307,7 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
+  list_remove(&thread_current()->c_elem);
   thread_current()->parent = NULL;
   thread_current()->exit = SUCCESS;
   sema_up(&thread_current()->exit_sema);

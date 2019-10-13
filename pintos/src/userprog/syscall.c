@@ -44,7 +44,10 @@ exec (const char *cmd_line)
 
   sema_down(&child->load_sema);
   
-  return tid;
+  if (child->load == FAILED)
+    return -1;
+  else 
+    return tid;
 }
 
 int
@@ -94,8 +97,17 @@ read (int fd, void *buffer, unsigned size)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  /* Use void putbuf(const char *burrer, size_t n) for fd = 1, otherwise
-     use off_t file_write(struct file *file, const void *buffer, off_t size) */
+  /* Use void putbuf(const char *buffer, size_t n) for fd = 1, otherwise
+    use off_t file_write(struct file *file, const void *buffer, off_t size) */
+  
+  if (fd == 1) {
+    putbuf((char *)buffer, size);
+    //fflush(stdout);
+  }
+  else {
+  }
+  return size;
+
 }
 
 void
@@ -136,7 +148,6 @@ syscall_handler (struct intr_frame *f)
 
     case SYS_EXIT:
       exit(*((int *)esp + 1));
-      exit(0);
       break;
 
     case SYS_EXEC:
@@ -169,7 +180,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_WRITE:
-      //write(int fd, void *buffer, unsigned size);
+      write(*((int *)esp+5), *((char **)esp+6), *((int *)esp+7));
       break;
 
     case SYS_SEEK:

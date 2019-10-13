@@ -15,8 +15,8 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
-/* Status in a thread's exit_status. */
-enum exit_status
+/* Status in a thread's userprog status. */
+enum userp_status
   {
     SUCCESS,		/* Process is successfully exited. */
     FAILED		/* Process isn't exited successfully. */
@@ -114,7 +114,8 @@ struct thread
     struct semaphore exit_sema;		/* Semaphore for exit. */
     struct semaphore load_sema;		/* Semaphore for load. */
 
-    enum exit_status exit;		/* Exit_status.  */
+    enum userp_status exit;		/* Exit_status.  */
+    enum userp_status load;		/* Load_status. */
 #endif
 
     /* Owned by thread.c. */

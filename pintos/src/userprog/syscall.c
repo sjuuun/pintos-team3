@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -35,7 +36,14 @@ exec (const char *cmd_line)
 {
   /* Create child process and execute program */
   /* process_execute? */
-  return process_execute(cmd_line);
+  tid_t tid = process_execute(cmd_line);
+  struct thread *child = get_child_process(tid);
+  if (child == NULL)
+    return -1;
+
+  sema_down(&child->load_sema);
+  
+  return tid;
 }
 
 int
@@ -87,8 +95,6 @@ write (int fd, const void *buffer, unsigned size)
 {
   /* Use void putbuf(const char *burrer, size_t n) for fd = 1, otherwise
      use off_t file_write(struct file *file, const void *buffer, off_t size) */
-  if (fd == 1) {
-    putbuf(buffer, size);
 }
 
 void

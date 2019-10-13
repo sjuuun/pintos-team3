@@ -77,6 +77,30 @@ argument_stack (char **argv, int argc, void **esp_)
   *esp_ = esp;
 }
 
+/* Get child process with tid */
+struct thread *
+get_child_process (tid_t tid)
+{
+  if (tid = TID_ERROR) {
+    return NULL;
+  }
+  struct thread *child;
+  struct list_elem *iter = list_front(&cur->child_list);
+  while (iter != NULL) {
+    child = list_entry(iter, struct thread, c_elem);
+    if (child->tid == child_tid) {
+      break;
+    }
+    iter = list_next(iter);
+  }
+
+  /* If child_tid is not found. */
+  if (iter == NULL) {
+    return NULL;
+  }
+  return child;
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -155,6 +179,8 @@ start_process (void *file_name_)
   argument_stack(parse, count, &if_.esp);
   //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
+  sema_up(&thread_current()->load_sema);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -177,25 +203,11 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  if (child_tid == TID_ERROR) {
-    return -1;
-  }
-
   struct thread *cur = thread_current();
-  struct thread *child;
-  struct list_elem *iter = list_front(&cur->child_list);
-  while (iter != NULL) {
-    child = list_entry(iter, struct thread, c_elem);
-    if (child->tid == child_tid) {
-      break;
-    }
-    iter = list_next(iter);
-  }
+  struct thread *child = get_child_process(child_tid);
 
-  /* If child_tid is not found. */
-  if (iter == NULL) {
+  if (child = NULL)
     return -1;
-  }
   
   sema_down(&child->exit_sema);
   //list_remove(iter);

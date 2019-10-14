@@ -181,7 +181,7 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   //palloc_free_page (file_name);
   if (!success) {
-    thread_current()->load_status = FAILED;
+    thread_current()->load_status = -1;
     sema_up(&thread_current()->load_sema);
     //thread_exit ();
     exit(-1);
@@ -190,7 +190,7 @@ start_process (void *file_name_)
   argument_stack(parse, count, &if_.esp);
   //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
-  thread_current()->load_status = SUCCESS;
+  thread_current()->load_status = 0;
   sema_up(&thread_current()->load_sema);
 
   /* Start the user process by simulating a return from an

@@ -217,8 +217,8 @@ thread_create (const char *name, int priority,
   sema_init(&t->load_sema, 0); 
 
   /* Initialize exit_status. */
-  t->exit_status = FAILED;
-  t->load_status = FAILED;
+  t->exit_status = -1;
+  t->load_status = -1;
 #endif
   
   /* Add to run queue. */
@@ -309,7 +309,7 @@ thread_exit (void)
   process_exit ();
   list_remove(&thread_current()->c_elem);
   thread_current()->parent = NULL;
-  thread_current()->exit_status = SUCCESS;
+  thread_current()->exit_status = 0;
   sema_up(&thread_current()->exit_sema);
 #endif
 

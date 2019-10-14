@@ -35,6 +35,7 @@ exit (int status)
   /* Use void thread_exit(void) */
   struct thread *cur = thread_current();
   /* Save exit status at process descriptor */
+  cur->exit_status = status;
   printf("%s: exit(%d)\n", cur->name, status);
   thread_exit();
 }
@@ -54,7 +55,7 @@ exec (const char *cmd_line)
 
   sema_down(&child->load_sema);
   
-  if (child->load_status == SUCCESS)
+  if (child->load_status == 0)
     return tid;
   else 
     return -1;

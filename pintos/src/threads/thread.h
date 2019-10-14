@@ -15,13 +15,6 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
-/* Status in a thread's userprog status. */
-enum userp_status
-  {
-    SUCCESS,		/* Process is successfully exited. */
-    FAILED		/* Process isn't exited successfully. */
-  };
-
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -114,8 +107,8 @@ struct thread
     struct semaphore exit_sema;		/* Semaphore for exit. */
     struct semaphore load_sema;		/* Semaphore for load. */
 
-    enum userp_status exit_status;	/* Exit_status.  */
-    enum userp_status load_status;	/* Load_status. */
+    int exit_status;			/* Exit_status.  */
+    int load_status;			/* Load_status. */
 #endif
 
     /* Owned by thread.c. */

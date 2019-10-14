@@ -8,6 +8,13 @@
 
 static void syscall_handler (struct intr_frame *);
 
+/* Check is user address */
+bool
+is_user_address (void *addr)
+{
+  return (addr >= 0x8048000) && (addr <= 0xc0000000);
+}
+
 void
 syscall_init (void) 
 {
@@ -37,6 +44,9 @@ exec (const char *cmd_line)
 {
   /* Create child process and execute program */
   /* process_execute? */
+  if (!is_user_address(cmd_line))
+    exit (-1);
+
   tid_t tid = process_execute(cmd_line);
   struct thread *child = get_child_process(tid);
   if (child == NULL)
@@ -44,10 +54,10 @@ exec (const char *cmd_line)
 
   sema_down(&child->load_sema);
   
-  if (child->load == FAILED)
-    return -1;
-  else 
+  if (child->load_status == SUCCESS)
     return tid;
+  else 
+    return -1;
 }
 
 int
@@ -151,11 +161,11 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_EXEC:
-      exec(*((char **)esp + 1));
+      f->eax = exec(*((char **)esp + 1));
       break;
 
     case SYS_WAIT:
-      wait(*((int *)esp + 1));
+      f->eax = wait(*((int *)esp + 1));
       break;
 
     /* File related system calls */

@@ -114,8 +114,8 @@ struct thread
     struct semaphore exit_sema;		/* Semaphore for exit. */
     struct semaphore load_sema;		/* Semaphore for load. */
 
-    enum userp_status exit;		/* Exit_status.  */
-    enum userp_status load;		/* Load_status. */
+    enum userp_status exit_status;	/* Exit_status.  */
+    enum userp_status load_status;	/* Load_status. */
 #endif
 
     /* Owned by thread.c. */

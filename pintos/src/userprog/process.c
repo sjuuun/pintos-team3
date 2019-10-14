@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "lib/user/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -180,15 +181,16 @@ start_process (void *file_name_)
   /* If load failed, quit. */
   //palloc_free_page (file_name);
   if (!success) {
-    thread_current()->load = FAILED;
+    thread_current()->load_status = FAILED;
     sema_up(&thread_current()->load_sema);
-    thread_exit ();
+    //thread_exit ();
+    exit(-1);
     palloc_free_page (file_name);
   }
   argument_stack(parse, count, &if_.esp);
   //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
-  thread_current()->load = SUCCESS;
+  thread_current()->load_status = SUCCESS;
   sema_up(&thread_current()->load_sema);
 
   /* Start the user process by simulating a return from an
@@ -220,7 +222,7 @@ process_wait (tid_t child_tid)
     return -1;
   
   sema_down(&child->exit_sema);
-  return child->exit;
+  return child->exit_status;
 }
 
 /* Free the current process's resources. */

@@ -222,6 +222,7 @@ process_wait (tid_t child_tid)
     return -1;
   
   sema_down(&child->exit_sema);
+  list_remove(&child->c_elem);
   return child->exit_status;
 }
 

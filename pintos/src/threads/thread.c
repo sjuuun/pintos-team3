@@ -307,10 +307,16 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
-  list_remove(&thread_current()->c_elem);
-  thread_current()->parent = NULL;
-  thread_current()->exit_status = 0;
+  //list_remove(&thread_current()->c_elem);
+  struct thread *cur = thread_current();
+  cur->parent = NULL;
+  if (cur->exit_status == -1)
+    cur->exit_status = 0;
   sema_up(&thread_current()->exit_sema);
+  enum intr_level old_level = intr_disable();
+  while (((&cur->c_elem)->prev != NULL) && ((&cur->c_elem)->next != NULL)) {
+    thread_block();
+  }
 #endif
 
   /* Remove thread from all threads list, set our status to dying,

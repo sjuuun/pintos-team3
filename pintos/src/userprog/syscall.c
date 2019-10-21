@@ -12,7 +12,7 @@ static void syscall_handler (struct intr_frame *);
 bool
 is_user_address (void *addr)
 {
-  return (addr >= 0x8048000) && (addr <= 0xc0000000);
+  return ((uint32_t) addr >= 0x8048000) && ((uint32_t)addr <= 0xbffffffb);
 }
 
 void
@@ -38,7 +38,7 @@ exit (int status)
   cur->exit_status = status;
   printf("%s: exit(%d)\n", cur->name, status);
   thread_exit();
-  list_remove(&cur->c_elem);
+  //list_remove(&cur->c_elem);
 }
 
 pid_t
@@ -46,14 +46,17 @@ exec (const char *cmd_line)
 {
   /* Create child process and execute program */
   /* process_execute? */
-  if (!is_user_address(cmd_line))
+  /*if (!is_user_address(cmd_line))
     exit (-1);
-
+  */
   tid_t tid = process_execute(cmd_line);
   struct thread *child = get_child_process(tid);
   if (child == NULL)
     return -1;
-
+  /*
+  child->parent = thread_current();
+  list_push_back(&thread_current()->child_list, &child->c_elem);
+  */
   sema_down(&child->load_sema);
   
   if (child->load_status == 0)
@@ -76,6 +79,8 @@ create (const char *file, unsigned initial_size)
 {
   /* Create file which have size of initial_size */
   /* Use bool filesys_create(const char *name, off_t initial_size) */
+  //return filesys_create(file, initial_size);
+
 }
 
 bool
@@ -83,6 +88,7 @@ remove (const char *file)
 {
   /* Remove file whose name is file */
   /* Use bool filesys_remove(const char *name) */
+  //return filesys_remove(file);
 }
 
 int
@@ -150,7 +156,8 @@ syscall_handler (struct intr_frame *f)
 
   void *esp = f->esp;
   int number = *(int *)esp;
-  
+  if (!is_user_address(esp))
+    exit(-1);
   /* System Call */
   switch (number) {
     /* Process related system calls */
@@ -172,11 +179,11 @@ syscall_handler (struct intr_frame *f)
 
     /* File related system calls */
     case SYS_CREATE:
-      //create(char *file, unsigned initial_size);
+      //f->eax = create(*((char **)esp + 1), *((int *)esp + 2));
       break;
 
     case SYS_REMOVE:
-      //remove(char *file);
+      //f->eax = remove(*((char **)esp + 1));
       break;
 
     case SYS_OPEN:

@@ -208,10 +208,11 @@ thread_create (const char *name, int priority,
 
 #ifdef USERPROG
   /* Process Hierarchy. */
+  
   struct thread *cur = thread_current();
   t->parent = cur;
   list_push_back(&cur->child_list, &t->c_elem);
-
+  
   /* Initialize semaphore. */
   sema_init(&t->exit_sema, 0);
   sema_init(&t->load_sema, 0); 

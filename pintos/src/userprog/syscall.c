@@ -38,6 +38,7 @@ exit (int status)
   cur->exit_status = status;
   printf("%s: exit(%d)\n", cur->name, status);
   thread_exit();
+  list_remove(&cur->c_elem);
 }
 
 pid_t

@@ -28,51 +28,43 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 void
 argument_stack (char **argv, int argc, void **esp_)
 {
-  char *esp = *esp_;
+  void *esp = *esp_;
   char *arg_addr[argc];
   /* Push arguments in argv */
   int i, j;
   for (i = argc-1; i >= 0; i--) {
     for (j = strlen(argv[i]); j >= 0; j--) {
       esp--;
-      *esp = argv[i][j];
+      *(char *)esp = argv[i][j];
     }
     arg_addr[i] = esp;
   }
   /* Place padding to align esp by 4 Byte */
   while (((int)esp % 4) != 0) {
     esp--;
-    *esp = 0;
+    *(char *)esp = 0;
   }
   /* Push start address of argv */
-  char **tmp = (char **)esp;
   for (i = argc; i >= 0; i--) {
-    tmp--;
+    esp = esp - sizeof(char *);
     if (i == argc) {
-      *tmp = NULL;
+      *(char **)esp = NULL;
     }
     else {
-      *tmp = arg_addr[i];
+      *(char **)esp = arg_addr[i];
     }
   }
-  esp = (char *)tmp;
 
   /* Push argc and argv */
-  char ***tmpv = (char ***)esp;
-  tmpv--;
-  *tmpv = (char **)esp;
-  esp = (char *) tmpv;
+  esp = esp -sizeof(char **);
+  *(char ***)esp = (char **)(esp + sizeof(char **));
 
-  int *tmpc = (int *)esp;
-  tmpc--;
-  *tmpc = argc;
-  esp = (char *) tmpc;
+  esp = esp - sizeof(int *);
+  *(int *)esp = argc;
 
   /* Push the address of the next instruction */
-  void **tmpa = (void **)esp;
-  tmpa--;
-  *tmpa = NULL;
-  esp = (char *)tmpa;
+  esp = esp - sizeof(void **);
+  *(void **)esp = NULL;
 
   /* Update esp */
   *esp_ = esp;

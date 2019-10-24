@@ -107,6 +107,8 @@ open (const char *file)
     return -1;
 
   struct file *f = filesys_open(file);
+  if (f == NULL)
+    return -1;
   cur->fdt[cur->next_fd] = f;
   int fd = cur->next_fd;
   while (cur->fdt[cur->next_fd] != NULL) { // what if next_fd is 64?
@@ -173,12 +175,10 @@ void
 close (int fd)
 {
   /* Use void file_close(struct file *file) */
-  /*
   struct thread *cur = thread_current();
   file_close(cur->fdt[fd]);
   if (fd < cur->next_fd)
     cur->next_fd = fd;
-  */
 }
 
 /* Actual System call hander call System call */
@@ -246,7 +246,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_CLOSE:
-      //close(int fd);
+      close(*((int *)esp + 1));
       break;
 
     default:

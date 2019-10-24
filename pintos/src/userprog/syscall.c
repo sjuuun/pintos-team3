@@ -80,7 +80,10 @@ create (const char *file, unsigned initial_size)
 {
   /* Create file which have size of initial_size */
   /* Use bool filesys_create(const char *name, off_t initial_size) */
-  // filesys_create(file, initial_size);
+  if (!is_user_address(file))
+    exit(-1);
+
+  return filesys_create(file, initial_size);
 }
 
 bool
@@ -88,7 +91,7 @@ remove (const char *file)
 {
   /* Remove file whose name is file */
   /* Use bool filesys_remove(const char *name) */
-  // filesys_remove(file);
+  // return filesys_remove(file);
 }
 
 int
@@ -97,17 +100,20 @@ open (const char *file)
   /* Open the file corresponds to path in file */
   /* Use struct file *filesys_open(const char *name) */
   /* TODO: allocate file and update next_fd (cannot over 63) */
-  /*
+  if (!is_user_address(file))
+    exit(-1);
   struct thread *cur = thread_current();
   if (cur->next_fd == 64)
     return -1;
 
   struct file *f = filesys_open(file);
-  cur->fdt[next_fd] = f;
-  while (cur->fdt[next_fd] != NULL) { // what if next_fd is 64?
+  cur->fdt[cur->next_fd] = f;
+  int fd = cur->next_fd;
+  while (cur->fdt[cur->next_fd] != NULL) { // what if next_fd is 64?
     cur->next_fd++;
   }
-  */
+  return fd;
+ 
 }
 
 int
@@ -123,7 +129,12 @@ read (int fd, void *buffer, unsigned size)
 {
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
-  // return (int) file_read(thread_current()->fdt[fd], buffer, size);
+  /*
+  if (fd == 0)
+    return input_getc();
+  else
+    return (int) file_read(thread_current()->fdt[fd], buffer, size);
+  */
 }
 
 int
@@ -203,7 +214,7 @@ syscall_handler (struct intr_frame *f)
     /* File related system calls */
     // TODO: argument validation and pass it.
     case SYS_CREATE:
-      //f->eax = create(*((char **)esp + 1), *((int *)esp + 2));
+      f->eax = create(*((char **)esp + 4), *((int *)esp + 5));
       break;
 
     case SYS_REMOVE:
@@ -211,7 +222,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_OPEN:
-      //f->eax = open(char *file);
+      f->eax = open(*((char **)esp + 1));
       break;
 
     case SYS_FILESIZE:

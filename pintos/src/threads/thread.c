@@ -13,6 +13,7 @@
 #include "threads/vaddr.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "lib/user/syscall.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -222,13 +223,15 @@ thread_create (const char *name, int priority,
   t->load_status = 0;
 
   /* Initialize FD table. */
+  /*
   t->fdt = palloc_get_page (PAL_ZERO);
   // or t->fdt = calloc(1, sizeof(file *)*64); need malloc
   if (t->fdt == NULL) {
     palloc_free_page (t);
     return TID_ERROR;
   }
-  t->next_fd = 0;
+  */
+  t->next_fd = 2;
   // TODO: open stdin and stdout
   //open(0);
   //open(1);
@@ -335,9 +338,9 @@ thread_exit (void)
   /* CLose all files in FD table. */
   for (int i=0; i < 64; i++) {
     if (cur->fdt[i] != NULL)
-      close(cur->fdt[i]);
+      close(i);
   }
-  palloc_free_page(cur->fdt);
+  //palloc_free_page(cur->fdt);
 
   /* Wait until parent check status. */
   enum intr_level old_level = intr_disable();

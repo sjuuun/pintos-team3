@@ -5,6 +5,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -79,8 +80,7 @@ create (const char *file, unsigned initial_size)
 {
   /* Create file which have size of initial_size */
   /* Use bool filesys_create(const char *name, off_t initial_size) */
-  //return filesys_create(file, initial_size);
-
+  // filesys_create(file, initial_size);
 }
 
 bool
@@ -88,7 +88,7 @@ remove (const char *file)
 {
   /* Remove file whose name is file */
   /* Use bool filesys_remove(const char *name) */
-  //return filesys_remove(file);
+  // filesys_remove(file);
 }
 
 int
@@ -96,6 +96,18 @@ open (const char *file)
 {
   /* Open the file corresponds to path in file */
   /* Use struct file *filesys_open(const char *name) */
+  /* TODO: allocate file and update next_fd (cannot over 63) */
+  /*
+  struct thread *cur = thread_current();
+  if (cur->next_fd == 64)
+    return -1;
+
+  struct file *f = filesys_open(file);
+  cur->fdt[next_fd] = f;
+  while (cur->fdt[next_fd] != NULL) { // what if next_fd is 64?
+    cur->next_fd++;
+  }
+  */
 }
 
 int
@@ -103,6 +115,7 @@ filesize(int fd)
 {
   /* Return the size, in bytes, of the file open as fd */
   /* Use off_t file_length(struct file *file) */
+  // return (int) file_length(thread_current()->fdt[fd]);
 }
 
 int
@@ -110,6 +123,7 @@ read (int fd, void *buffer, unsigned size)
 {
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
+  // return (int) file_read(thread_current()->fdt[fd], buffer, size);
 }
 
 int
@@ -123,9 +137,9 @@ write (int fd, const void *buffer, unsigned size)
     //fflush(stdout);
   }
   else {
+    // file_write(thread_current()->fdt[fd], (char *)buffer, size);
   }
   return size;
-
 }
 
 void
@@ -133,6 +147,7 @@ seek (int fd, unsigned position)
 {
   /* Changes the next byte to be read or written in open file fd to position */
   /* Use void file_seek(struct file *file, off_t new_pos */
+  // file_seek(thread_current()->fdt[fd], position);
 }
 
 unsigned
@@ -140,12 +155,19 @@ tell (int fd)
 {
   /* Return the position of the next byte to be read or written in open file fd */
   /* Use off_t file_tell(struct file *file) */
+  // return file_tell(thread_current()->fdt[fd]);
 }
 
 void
 close (int fd)
 {
   /* Use void file_close(struct file *file) */
+  /*
+  struct thread *cur = thread_current();
+  file_close(cur->fdt[fd]);
+  if (fd < cur->next_fd)
+    cur->next_fd = fd;
+  */
 }
 
 /* Actual System call hander call System call */
@@ -158,6 +180,7 @@ syscall_handler (struct intr_frame *f)
   int number = *(int *)esp;
   if (!is_user_address(esp))
     exit(-1);
+
   /* System Call */
   switch (number) {
     /* Process related system calls */
@@ -178,6 +201,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     /* File related system calls */
+    // TODO: argument validation and pass it.
     case SYS_CREATE:
       //f->eax = create(*((char **)esp + 1), *((int *)esp + 2));
       break;
@@ -187,19 +211,19 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_OPEN:
-      //open(char *file);
+      //f->eax = open(char *file);
       break;
 
     case SYS_FILESIZE:
-      //filesize(int fd);
+      //f->eax = filesize(int fd);
       break;
 
     case SYS_READ:
-      //read(int fd, void *buffer, unsigned size);
+      //f->eax = read(int fd, void *buffer, unsigned size);
       break;
 
     case SYS_WRITE:
-      write(*((int *)esp+5), *((char **)esp+6), *((int *)esp+7));
+      f->eax = write(*((int *)esp+5), *((char **)esp+6), *((int *)esp+7));
       break;
 
     case SYS_SEEK:
@@ -207,12 +231,13 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_TELL:
-      //tell(int fd);
+      //f->eax = tell(int fd);
       break;
 
     case SYS_CLOSE:
       //close(int fd);
       break;
+
     default:
       break;
   }

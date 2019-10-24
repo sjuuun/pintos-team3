@@ -220,6 +220,18 @@ thread_create (const char *name, int priority,
   /* Initialize exit_status. */
   t->exit_status = 0;
   t->load_status = 0;
+
+  /* Initialize FD table. */
+  t->fdt = palloc_get_page (PAL_ZERO);
+  // or t->fdt = calloc(1, sizeof(file *)*64); need malloc
+  if (t->fdt == NULL) {
+    palloc_free_page (t);
+    return TID_ERROR;
+  }
+  t->next_fd = 0;
+  // TODO: open stdin and stdout
+  //open(0);
+  //open(1);
 #endif
   
   /* Add to run queue. */
@@ -314,16 +326,25 @@ thread_exit (void)
   //if (cur->exit_status == -1)
   //  cur->exit_status = 0;
   sema_up(&cur->exit_sema);
-  enum intr_level old_level = intr_disable();
-  while (((&cur->c_elem)->prev != NULL) && ((&cur->c_elem)->next != NULL)) {
-    thread_block();
-  }
-  intr_set_level(old_level);
 
   /* Remove child_list */
   while (!list_empty(&cur->child_list)) {
     list_remove (list_front(&cur->child_list));
   }
+
+  /* CLose all files in FD table. */
+  for (int i=0; i < 64; i++) {
+    if (cur->fdt[i] != NULL)
+      close(cur->fdt[i]);
+  }
+  palloc_free_page(cur->fdt);
+
+  /* Wait until parent check status. */
+  enum intr_level old_level = intr_disable();
+  while (((&cur->c_elem)->prev != NULL) && ((&cur->c_elem)->next != NULL)) {
+    thread_block();
+  }
+  intr_set_level(old_level);
 #endif
 
   /* Remove thread from all threads list, set our status to dying,

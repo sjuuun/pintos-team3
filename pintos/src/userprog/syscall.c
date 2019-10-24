@@ -131,12 +131,14 @@ read (int fd, void *buffer, unsigned size)
 {
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
-  /*
+
+  if (!is_user_address(buffer))
+    exit(-1);
   if (fd == 0)
     return input_getc();
   else
     return (int) file_read(thread_current()->fdt[fd], buffer, size);
-  */
+
 }
 
 int
@@ -230,7 +232,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_READ:
-      //f->eax = read(int fd, void *buffer, unsigned size);
+      f->eax = read(*((int *)esp + 5), *((void **)esp + 6), *((int *)esp +7));
       break;
 
     case SYS_WRITE:

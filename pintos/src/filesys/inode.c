@@ -262,8 +262,9 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
-  if (inode->deny_write_cnt)
+  if (inode->deny_write_cnt) {
     return 0;
+  }
 
   while (size > 0) 
     {

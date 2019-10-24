@@ -9,6 +9,14 @@
 
 static void syscall_handler (struct intr_frame *);
 
+struct file
+  {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+  };
+
+
 /* Check is user address */
 bool
 is_user_address (void *addr)
@@ -91,7 +99,7 @@ remove (const char *file)
 {
   /* Remove file whose name is file */
   /* Use bool filesys_remove(const char *name) */
-  // return filesys_remove(file);
+  return filesys_remove(file);
 }
 
 int
@@ -110,6 +118,9 @@ open (const char *file)
   if (f == NULL)
     return -1;
   cur->fdt[cur->next_fd] = f;
+  cur->running_file = f;
+  if (strcmp(file, thread_current()->name) == 0)
+    file_deny_write(f);
   int fd = cur->next_fd;
   while (cur->fdt[cur->next_fd] != NULL) { // what if next_fd is 64?
     cur->next_fd++;
@@ -123,7 +134,7 @@ filesize(int fd)
 {
   /* Return the size, in bytes, of the file open as fd */
   /* Use off_t file_length(struct file *file) */
-  // return (int) file_length(thread_current()->fdt[fd]);
+  return (int) file_length(thread_current()->fdt[fd]);
 }
 
 int
@@ -146,15 +157,16 @@ write (int fd, const void *buffer, unsigned size)
 {
   /* Use void putbuf(const char *buffer, size_t n) for fd = 1, otherwise
     use off_t file_write(struct file *file, const void *buffer, off_t size) */
-  
+  if (!is_user_address(buffer))
+    exit(-1);
   if (fd == 1) {
     putbuf((char *)buffer, size);
-    //fflush(stdout);
+    return size;
   }
-  else {
-    // file_write(thread_current()->fdt[fd], (char *)buffer, size);
+  else {  
+    return file_write(thread_current()->fdt[fd], (char *)buffer, size);
   }
-  return size;
+  //return size;
 }
 
 void
@@ -178,7 +190,10 @@ close (int fd)
 {
   /* Use void file_close(struct file *file) */
   struct thread *cur = thread_current();
+  if (cur->fdt[fd] == NULL) 
+    return -1;
   file_close(cur->fdt[fd]);
+  cur->fdt[fd] = NULL;
   if (fd < cur->next_fd)
     cur->next_fd = fd;
 }
@@ -220,7 +235,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_REMOVE:
-      //f->eax = remove(*((char **)esp + 1));
+      f->eax = remove(*((char **)esp + 1));
       break;
 
     case SYS_OPEN:
@@ -228,7 +243,7 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_FILESIZE:
-      //f->eax = filesize(int fd);
+      f->eax = filesize(*((int *)esp +1));
       break;
 
     case SYS_READ:

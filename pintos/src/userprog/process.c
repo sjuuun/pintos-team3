@@ -231,9 +231,7 @@ process_exit (void)
       cur->fdt[i] = NULL;
     }
   }
-  lock_acquire(&filesys_lock);
   file_close(cur->running_file);
-  lock_release(&filesys_lock);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

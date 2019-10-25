@@ -321,12 +321,18 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
   struct thread *cur = thread_current();
-  cur->parent = NULL;
+  //cur->parent = NULL;
   sema_up(&cur->exit_sema);
 
   /* Remove child_list */
   while (!list_empty(&cur->child_list)) {
-    list_remove (list_front(&cur->child_list));
+    struct list_elem *fr = list_front(&cur->child_list);
+    struct thread *ch = list_entry(fr, struct thread, c_elem);
+    list_remove (fr);
+    fr->prev = NULL;
+    fr->next = NULL;
+    if (ch->status == THREAD_BLOCKED)
+      thread_unblock(ch);
   }
 
   /* Wait until parent check status. */

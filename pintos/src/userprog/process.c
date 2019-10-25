@@ -216,6 +216,9 @@ process_wait (tid_t child_tid)
   
   sema_down(&child->exit_sema);
   list_remove(&child->c_elem);
+  child->c_elem.prev = NULL;
+  child->c_elem.next = NULL;
+  thread_unblock(child);
   return child->exit_status;
 }
 

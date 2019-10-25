@@ -174,7 +174,7 @@ seek (int fd, unsigned position)
 {
   /* Changes the next byte to be read or written in open file fd to position */
   /* Use void file_seek(struct file *file, off_t new_pos */
-  // file_seek(thread_current()->fdt[fd], position);
+  return file_seek(thread_current()->fdt[fd], position);
 }
 
 unsigned
@@ -182,7 +182,7 @@ tell (int fd)
 {
   /* Return the position of the next byte to be read or written in open file fd */
   /* Use off_t file_tell(struct file *file) */
-  // return file_tell(thread_current()->fdt[fd]);
+  return file_tell(thread_current()->fdt[fd]);
 }
 
 void
@@ -255,11 +255,12 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_SEEK:
-      //seek(int fd, unsigned position);
+      //f->eax = 
+      seek(*((int *)esp +4), *((int *)esp + 5));
       break;
 
     case SYS_TELL:
-      //f->eax = tell(int fd);
+      f->eax = tell(*((int *)esp +1));
       break;
 
     case SYS_CLOSE:

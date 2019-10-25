@@ -168,6 +168,7 @@ start_process (void *file_name_)
     parse[i] = token;
     i++;
   }
+  count = i;
   success = load (parse[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
@@ -179,7 +180,6 @@ start_process (void *file_name_)
     exit(-1);
     palloc_free_page (file_name);
   }
-  //file_deny_write(&thread_current()->running_file);
   argument_stack(parse, count, &if_.esp);
   //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
@@ -225,9 +225,6 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  //file_allow_write(cur->running_file);
-  //file_close(cur->running_file);
-  cur->running_file = NULL;
   for (int i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {
       file_close(cur->fdt[i]);
@@ -364,8 +361,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-  file_deny_write(file);
-  t->running_file = file;
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)

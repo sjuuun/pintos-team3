@@ -232,9 +232,6 @@ thread_create (const char *name, int priority,
   }
   */
   t->next_fd = 2;
-  // TODO: open stdin and stdout
-  //open(0);
-  //open(1);
 #endif
   
   /* Add to run queue. */
@@ -323,24 +320,14 @@ thread_exit (void)
 
 #ifdef USERPROG
   process_exit ();
-  //list_remove(&thread_current()->c_elem);
   struct thread *cur = thread_current();
   cur->parent = NULL;
-  //if (cur->exit_status == -1)
-  //  cur->exit_status = 0;
   sema_up(&cur->exit_sema);
 
   /* Remove child_list */
   while (!list_empty(&cur->child_list)) {
     list_remove (list_front(&cur->child_list));
   }
-
-  /* CLose all files in FD table. */
-  for (int i=0; i < 64; i++) {
-    if (cur->fdt[i] != NULL)
-      close(i);
-  }
-  //palloc_free_page(cur->fdt);
 
   /* Wait until parent check status. */
   enum intr_level old_level = intr_disable();

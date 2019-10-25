@@ -6,6 +6,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "filesys/filesys.h"
+#include "threads/synch.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -28,6 +29,7 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init(&filesys_lock);
 }
 
 /* System call handler functions - Process related */
@@ -145,6 +147,7 @@ read (int fd, void *buffer, unsigned size)
 
   if (!is_user_address(buffer))
     exit(-1);
+  lock_acquire(&filesys_lock);
   if (fd == 0)
     return input_getc();
   else
@@ -159,6 +162,7 @@ write (int fd, const void *buffer, unsigned size)
     use off_t file_write(struct file *file, const void *buffer, off_t size) */
   if (!is_user_address(buffer))
     exit(-1);
+  lock_acquire(&filesys_lock);
   if (fd == 1) {
     putbuf((char *)buffer, size);
     return size;
@@ -248,10 +252,12 @@ syscall_handler (struct intr_frame *f)
 
     case SYS_READ:
       f->eax = read(*((int *)esp + 5), *((void **)esp + 6), *((int *)esp +7));
+      lock_release(&filesys_lock);
       break;
 
     case SYS_WRITE:
       f->eax = write(*((int *)esp+5), *((char **)esp+6), *((int *)esp+7));
+      lock_release(&filesys_lock);
       break;
 
     case SYS_SEEK:

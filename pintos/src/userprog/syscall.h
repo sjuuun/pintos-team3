@@ -5,4 +5,6 @@ void syscall_init (void);
 
 typedef int pid_t;
 
+struct lock filesys_lock;
+
 #endif /* userprog/syscall.h */

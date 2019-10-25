@@ -112,7 +112,7 @@ struct thread
     int load_status;			/* Load_status. */
 
     /* File descriptor table. */
-    struct file *fdt[64];		/* Pointing FD table. */
+    struct file *fdt[65];		/* Pointing FD table. */
     int next_fd;			/* Next smallest FD */
     struct file *running_file;		/* File pointer for running file. */
 #endif

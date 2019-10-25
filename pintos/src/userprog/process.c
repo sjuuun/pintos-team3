@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -17,7 +18,6 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "lib/user/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -177,8 +177,8 @@ start_process (void *file_name_)
     thread_current()->load_status = -1;
     sema_up(&thread_current()->load_sema);
     //thread_exit ();
-    exit(-1);
     palloc_free_page (file_name);
+    exit(-1);
   }
   argument_stack(parse, count, &if_.esp);
   //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
@@ -231,7 +231,9 @@ process_exit (void)
       cur->fdt[i] = NULL;
     }
   }
+  lock_acquire(&filesys_lock);
   file_close(cur->running_file);
+  lock_release(&filesys_lock);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -355,15 +357,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  lock_acquire(&filesys_lock);
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
     {
+      lock_release(&filesys_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
   file_deny_write (file);
   thread_current()->running_file = file;
+  lock_release(&filesys_lock);
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -447,8 +452,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  if (!success)
+  if (!success) {
     file_close (file);
+    thread_current()->running_file = NULL;
+  }
   return success;
 }
 

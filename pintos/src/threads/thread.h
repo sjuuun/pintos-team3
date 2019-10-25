@@ -114,6 +114,7 @@ struct thread
     /* File descriptor table. */
     struct file *fdt[64];		/* Pointing FD table. */
     int next_fd;			/* Next smallest FD */
+    struct file *running_file;		/* File pointer for running file. */
 #endif
 
     /* Owned by thread.c. */

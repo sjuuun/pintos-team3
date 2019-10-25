@@ -113,8 +113,6 @@ open (const char *file)
   if (f == NULL)
     return -1;
   cur->fdt[cur->next_fd] = f;
-  if (strcmp(file, thread_current()->name) == 0)
-    file_deny_write(f);
   int fd = cur->next_fd;
   while (cur->fdt[cur->next_fd] != NULL) { // what if next_fd is 64?
     cur->next_fd++;

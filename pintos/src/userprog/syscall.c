@@ -14,7 +14,7 @@
 /* function prototypes */
 static void syscall_handler (struct intr_frame *);
 
-/* Check is user address */
+/* Check if input is user address */
 bool
 is_user_address (void *addr)
 {
@@ -32,15 +32,15 @@ syscall_init (void)
 void
 halt (void)
 {
-  /* Use void shutdown_power_off(void) */
+  /* Shutdown Pintos. */
   shutdown_power_off();
 }
 
 void
 exit (int status)
 {
-  /* Use void thread_exit(void) */
   struct thread *cur = thread_current();
+
   /* Save exit status at process descriptor */
   cur->exit_status = status;
   printf("%s: exit(%d)\n", cur->name, status);
@@ -51,7 +51,6 @@ pid_t
 exec (const char *cmd_line)
 {
   /* Create child process and execute program */
-  /* process_execute? */
   if (!is_user_address((void *)cmd_line))
     exit (-1);
 
@@ -60,10 +59,10 @@ exec (const char *cmd_line)
   if (child == NULL)
     return -1;
   sema_down(&child->load_sema);
-  
+
   if (child->load_status == 0)
     return tid;
-  else 
+  else
     return -1;
 }
 
@@ -71,7 +70,6 @@ int
 wait (pid_t pid)
 {
   /* Wait for termination of child process whose process id is pid */
-  /* process_wait? */
   return process_wait(pid);
 }
 
@@ -79,8 +77,8 @@ wait (pid_t pid)
 bool
 create (const char *file, unsigned initial_size)
 {
-  /* Create file which have size of initial_size */
-  /* Use bool filesys_create(const char *name, off_t initial_size) */
+  /* Create file which have size of initial_size
+     Use bool filesys_create(const char *name, off_t initial_size) */
   if (!is_user_address((void *)file))
     exit(-1);
 
@@ -90,17 +88,16 @@ create (const char *file, unsigned initial_size)
 bool
 remove (const char *file)
 {
-  /* Remove file whose name is file */
-  /* Use bool filesys_remove(const char *name) */
+  /* Remove file whose name is file
+     Use bool filesys_remove(const char *name) */
   return filesys_remove(file);
 }
 
 int
 open (const char *file)
 {
-  /* Open the file corresponds to path in file */
-  /* Use struct file *filesys_open(const char *name) */
-  /* Todo : allocate file and update next_fd (cannot over 63) */
+  /* Open the file corresponds to path in file
+     Use struct file *filesys_open(const char *name) */
   if (!is_user_address((void *)file))
     exit(-1);
   struct thread *cur = thread_current();
@@ -112,18 +109,17 @@ open (const char *file)
     return -1;
   cur->fdt[cur->next_fd] = f;
   int fd = cur->next_fd;
-  while (cur->fdt[cur->next_fd] != NULL) { // what if next_fd is 64?
+  while (cur->fdt[cur->next_fd] != NULL) {
     cur->next_fd++;
   }
   return fd;
- 
 }
 
 int
 filesize(int fd)
 {
-  /* Return the size, in bytes, of the file open as fd */
-  /* Use off_t file_length(struct file *file) */
+  /* Return the size, in bytes, of the file open as fd
+     Use off_t file_length(struct file *file) */
   return (int) file_length(thread_current()->fdt[fd]);
 }
 
@@ -147,7 +143,7 @@ int
 write (int fd, const void *buffer, unsigned size)
 {
   /* Use void putbuf(const char *buffer, size_t n) for fd = 1, otherwise
-    use off_t file_write(struct file *file, const void *buffer, off_t size) */
+     use off_t file_write(struct file *file, const void *buffer, off_t size) */
   if (!is_user_address((void *)buffer))
     exit(-1);
   lock_acquire(&filesys_lock);
@@ -155,7 +151,7 @@ write (int fd, const void *buffer, unsigned size)
     putbuf((char *)buffer, size);
     return size;
   }
-  else {  
+  else {
     return file_write(thread_current()->fdt[fd], (char *)buffer, size);
   }
 }
@@ -163,16 +159,16 @@ write (int fd, const void *buffer, unsigned size)
 void
 seek (int fd, unsigned position)
 {
-  /* Changes the next byte to be read or written in open file fd to position */
-  /* Use void file_seek(struct file *file, off_t new_pos */
+  /* Changes the next byte to be read or written in open file fd to position
+     Use void file_seek(struct file *file, off_t new_pos */
   return file_seek(thread_current()->fdt[fd], position);
 }
 
 unsigned
 tell (int fd)
 {
-  /* Return the position of the next byte to be read or written in open file fd */
-  /* Use off_t file_tell(struct file *file) */
+  /* Return the position of next byte to be read or written in open file fd
+     Use off_t file_tell(struct file *file) */
   return file_tell(thread_current()->fdt[fd]);
 }
 
@@ -191,7 +187,7 @@ close (int fd)
 
 /* Actual System call hander call System call */
 static void
-syscall_handler (struct intr_frame *f) 
+syscall_handler (struct intr_frame *f)
 {
   void *esp = f->esp;
   int number = *(int *)esp;

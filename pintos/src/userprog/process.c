@@ -72,7 +72,7 @@ argument_stack (char **argv, int argc, void **esp_)
   *esp_ = esp;
 }
 
-/* Get child process of current running thread with tid. 
+/* Get child process of current running thread with tid.
    If not exists, return NULL */
 struct thread *
 get_child_process (tid_t tid)
@@ -117,9 +117,9 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  
-  /* Todo : Parse the file_name and deliver the first argument of it to 
-		thread_create below */
+
+  /* Parse the file_name.
+     Deliver the first argument of it to thread_create below */
   char *save_ptr;
   char *cmd_line = palloc_get_page(0);
   strlcpy (cmd_line, file_name, PGSIZE);
@@ -127,7 +127,7 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR) 
+  if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   palloc_free_page (cmd_line);
   return tid;
@@ -147,7 +147,7 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
- 
+
   /* Count argc */
   int count = 0;
   char *iter = (char *)file_name;
@@ -207,14 +207,14 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid) 
+process_wait (tid_t child_tid)
 {
   struct thread *child = get_child_process(child_tid);
   enum intr_level old_level;
 
   if (child == NULL)
     return -1;
-  
+
   sema_down(&child->exit_sema);
   old_level = intr_disable ();
   list_remove(&child->c_elem);

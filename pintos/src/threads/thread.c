@@ -209,23 +209,22 @@ thread_create (const char *name, int priority,
 
 #ifdef USERPROG
   /* Process Hierarchy. */
-
   struct thread *cur = thread_current();
   t->parent = cur;
   list_push_back(&cur->child_list, &t->c_elem);
 
   /* Initialize semaphore. */
   sema_init(&t->exit_sema, 0);
-  sema_init(&t->load_sema, 0); 
+  sema_init(&t->load_sema, 0);
 
   /* Initialize exit_status. */
   t->exit_status = 0;
   t->load_status = 0;
-  
+
   /* Initialize next_fd for FDT */
   t->next_fd = 2;
 #endif
-  
+
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -313,21 +312,25 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
   struct thread *cur = thread_current();
+  enum intr_level old_level;
+
   sema_up(&cur->exit_sema);
 
   /* Remove child_list */
   while (!list_empty(&cur->child_list)) {
     struct list_elem *fr = list_front(&cur->child_list);
     struct thread *ch = list_entry(fr, struct thread, c_elem);
+    old_level = intr_disable();
     list_remove (fr);
     fr->prev = NULL;
     fr->next = NULL;
     if (ch->status == THREAD_BLOCKED)
       thread_unblock(ch);
+    intr_set_level(old_level);
   }
 
   /* Wait until parent check status. */
-  enum intr_level old_level = intr_disable();
+  old_level = intr_disable();
   while (((&cur->c_elem)->prev != NULL) && ((&cur->c_elem)->next != NULL)) {
     thread_block();
   }

@@ -221,16 +221,8 @@ thread_create (const char *name, int priority,
   /* Initialize exit_status. */
   t->exit_status = 0;
   t->load_status = 0;
-
-  /* Initialize FD table. */
-  /*
-  t->fdt = palloc_get_page (PAL_ZERO);
-  // or t->fdt = calloc(1, sizeof(file *)*64); need malloc
-  if (t->fdt == NULL) {
-    palloc_free_page (t);
-    return TID_ERROR;
-  }
-  */
+  
+  /* Initialize next_fd for FDT */
   t->next_fd = 2;
 #endif
   

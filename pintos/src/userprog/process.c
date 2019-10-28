@@ -21,6 +21,8 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+void argument_stack (char **, int, void **);
+
 
 /* Set-up stack for starting user process. Push arguments,
    push argc and argv, and push the address of the next
@@ -70,7 +72,8 @@ argument_stack (char **argv, int argc, void **esp_)
   *esp_ = esp;
 }
 
-/* Get child process with tid */
+/* Get child process of current running thread with tid. 
+   If not exists, return NULL */
 struct thread *
 get_child_process (tid_t tid)
 {
@@ -172,11 +175,9 @@ start_process (void *file_name_)
   success = load (parse[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
-  //palloc_free_page (file_name);
   if (!success) {
     thread_current()->load_status = -1;
     sema_up(&thread_current()->load_sema);
-    //thread_exit ();
     palloc_free_page (file_name);
     exit(-1);
   }
@@ -208,7 +209,6 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  //struct thread *cur = thread_current();
   struct thread *child = get_child_process(child_tid);
 
   if (child == NULL)

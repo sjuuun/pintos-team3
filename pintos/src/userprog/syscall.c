@@ -10,6 +10,8 @@
 #include "threads/synch.h"
 #include "lib/string.h"
 
+
+/* function prototypes */
 static void syscall_handler (struct intr_frame *);
 
 /* Check is user address */
@@ -57,10 +59,6 @@ exec (const char *cmd_line)
   struct thread *child = get_child_process(tid);
   if (child == NULL)
     return -1;
-  /*
-  child->parent = thread_current();
-  list_push_back(&thread_current()->child_list, &child->c_elem);
-  */
   sema_down(&child->load_sema);
   
   if (child->load_status == 0)
@@ -102,7 +100,7 @@ open (const char *file)
 {
   /* Open the file corresponds to path in file */
   /* Use struct file *filesys_open(const char *name) */
-  /* TODO: allocate file and update next_fd (cannot over 63) */
+  /* Todo : allocate file and update next_fd (cannot over 63) */
   if (!is_user_address((void *)file))
     exit(-1);
   struct thread *cur = thread_current();
@@ -160,7 +158,6 @@ write (int fd, const void *buffer, unsigned size)
   else {  
     return file_write(thread_current()->fdt[fd], (char *)buffer, size);
   }
-  //return size;
 }
 
 void
@@ -196,8 +193,6 @@ close (int fd)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  //thread_exit ();
-
   void *esp = f->esp;
   int number = *(int *)esp;
   if (!is_user_address(esp))
@@ -223,7 +218,6 @@ syscall_handler (struct intr_frame *f)
       break;
 
     /* File related system calls */
-    // TODO: argument validation and pass it.
     case SYS_CREATE:
       f->eax = create(*((char **)esp + 4), *((int *)esp + 5));
       break;
@@ -251,7 +245,6 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_SEEK:
-      //f->eax = 
       seek(*((int *)esp +4), *((int *)esp + 5));
       break;
 

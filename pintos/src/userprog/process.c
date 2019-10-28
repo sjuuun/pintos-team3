@@ -210,15 +210,18 @@ int
 process_wait (tid_t child_tid) 
 {
   struct thread *child = get_child_process(child_tid);
+  enum intr_level old_level;
 
   if (child == NULL)
     return -1;
   
   sema_down(&child->exit_sema);
+  old_level = intr_disable ();
   list_remove(&child->c_elem);
   child->c_elem.prev = NULL;
   child->c_elem.next = NULL;
   thread_unblock(child);
+  intr_set_level (old_level);
   return child->exit_status;
 }
 

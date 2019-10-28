@@ -313,7 +313,6 @@ thread_exit (void)
 #ifdef USERPROG
   process_exit ();
   struct thread *cur = thread_current();
-  //cur->parent = NULL;
   sema_up(&cur->exit_sema);
 
   /* Remove child_list */

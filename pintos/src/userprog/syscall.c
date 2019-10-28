@@ -219,7 +219,7 @@ syscall_handler (struct intr_frame *f)
 
     /* File related system calls */
     case SYS_CREATE:
-      f->eax = create(*((char **)esp + 4), *((int *)esp + 5));
+      f->eax = create(*((char **)esp + 1), *((int *)esp + 2));
       break;
 
     case SYS_REMOVE:
@@ -235,17 +235,17 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_READ:
-      f->eax = read(*((int *)esp + 5), *((void **)esp + 6), *((int *)esp +7));
+      f->eax = read(*((int *)esp + 1), *((void **)esp + 2), *((int *)esp +3));
       lock_release(&filesys_lock);
       break;
 
     case SYS_WRITE:
-      f->eax = write(*((int *)esp+5), *((char **)esp+6), *((int *)esp+7));
+      f->eax = write(*((int *)esp+1), *((char **)esp+2), *((int *)esp+3));
       lock_release(&filesys_lock);
       break;
 
     case SYS_SEEK:
-      seek(*((int *)esp +4), *((int *)esp + 5));
+      seek(*((int *)esp +1), *((int *)esp + 2));
       break;
 
     case SYS_TELL:

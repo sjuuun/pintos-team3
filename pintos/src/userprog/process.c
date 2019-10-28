@@ -228,7 +228,8 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  for (int i=2; i<64; i++){
+  int i;
+  for (i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {
       file_close(cur->fdt[i]);
       cur->fdt[i] = NULL;

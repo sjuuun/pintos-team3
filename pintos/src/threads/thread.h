@@ -4,6 +4,8 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
+#include "filesys/file.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -96,6 +98,23 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
+    /* Process Hierarchy */
+    struct thread *parent;		/* Pointing to parent process. */
+    struct list child_list;		/* List of child processes. */
+    struct list_elem c_elem;		/* List element for siblings. */
+
+    /* Semaphore for exit and load. */
+    struct semaphore exit_sema;		/* Semaphore for exit. */
+    struct semaphore load_sema;		/* Semaphore for load. */
+
+    int exit_status;			/* Exit_status.  */
+    int load_status;			/* Load_status. */
+
+    /* File descriptor table. */
+    struct file *fdt[65];		/* Pointing FD table. */
+    int next_fd;			/* Next smallest FD */
+    struct file *running_file;		/* File pointer for running file. */
 #endif
 
     /* Owned by thread.c. */

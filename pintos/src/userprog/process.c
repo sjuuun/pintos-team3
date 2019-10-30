@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -20,6 +21,85 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+void argument_stack (char **, int, void **);
+
+
+/* Set-up stack for starting user process. Push arguments,
+   push argc and argv, and push the address of the next
+   instruction. This function is used in start_process. */
+void
+argument_stack (char **argv, int argc, void **esp_)
+{
+  void *esp = *esp_;
+  char *arg_addr[argc];
+  /* Push arguments in argv */
+  int i, j;
+  for (i = argc-1; i >= 0; i--) {
+    for (j = strlen(argv[i]); j >= 0; j--) {
+      esp--;
+      *(char *)esp = argv[i][j];
+    }
+    arg_addr[i] = esp;
+  }
+  /* Place padding to align esp by 4 Byte */
+  while (((int)esp % 4) != 0) {
+    esp--;
+    *(char *)esp = 0;
+  }
+  /* Push start address of argv */
+  for (i = argc; i >= 0; i--) {
+    esp = esp - sizeof(char *);
+    if (i == argc) {
+      *(char **)esp = NULL;
+    }
+    else {
+      *(char **)esp = arg_addr[i];
+    }
+  }
+
+  /* Push argc and argv */
+  esp = esp -sizeof(char **);
+  *(char ***)esp = (char **)(esp + sizeof(char **));
+
+  esp = esp - sizeof(int *);
+  *(int *)esp = argc;
+
+  /* Push the address of the next instruction */
+  esp = esp - sizeof(void **);
+  *(void **)esp = NULL;
+
+  /* Update esp */
+  *esp_ = esp;
+}
+
+/* Get child process of current running thread with tid.
+   If not exists, return NULL */
+struct thread *
+get_child_process (tid_t tid)
+{
+  if (tid == TID_ERROR) {
+    return NULL;
+  }
+  struct thread *child;
+  struct list_elem *iter;
+  if (list_empty(&thread_current()->child_list))
+    return NULL;
+
+  iter = list_front(&thread_current()->child_list);
+  while (iter != NULL) {
+    child = list_entry(iter, struct thread, c_elem);
+    if (child->tid == tid) {
+      break;
+    }
+    iter = list_next(iter);
+  }
+
+  /* If child_tid is not found. */
+  if (iter == NULL) {
+    return NULL;
+  }
+  return child;
+}
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -38,10 +118,18 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* Parse the file_name.
+     Deliver the first argument of it to thread_create below */
+  char *save_ptr;
+  char *cmd_line = palloc_get_page(0);
+  strlcpy (cmd_line, file_name, PGSIZE);
+  char *token = strtok_r(cmd_line, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  palloc_free_page (cmd_line);
   return tid;
 }
 
@@ -59,12 +147,45 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+
+  /* Count argc */
+  int count = 0;
+  char *iter = (char *)file_name;
+  while (*iter != '\0') {
+    if (*iter == ' ') {
+      count++;
+      while (*(iter+1) == ' ')
+        iter++;
+    }
+    iter++;
+  }
+  count++;
+
+  /* Parse arguments */
+  char *parse[count];
+  char *token;
+  char *save_ptr;
+  int i = 0;
+  for (token = strtok_r(file_name, " ", &save_ptr);
+       token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+    parse[i] = token;
+    i++;
+  }
+  count = i;
+  success = load (parse[0], &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
+  if (!success) {
+    thread_current()->load_status = -1;
+    sema_up(&thread_current()->load_sema);
+    palloc_free_page (file_name);
+    exit(-1);
+  }
+  argument_stack(parse, count, &if_.esp);
+  //hex_dump((uintptr_t) if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  thread_current()->load_status = 0;
+  sema_up(&thread_current()->load_sema);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -86,9 +207,22 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid)
 {
-  return -1;
+  struct thread *child = get_child_process(child_tid);
+  enum intr_level old_level;
+
+  if (child == NULL)
+    return -1;
+
+  sema_down(&child->exit_sema);
+  old_level = intr_disable ();
+  list_remove(&child->c_elem);
+  child->c_elem.prev = NULL;
+  child->c_elem.next = NULL;
+  thread_unblock(child);
+  intr_set_level (old_level);
+  return child->exit_status;
 }
 
 /* Free the current process's resources. */
@@ -97,7 +231,14 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
+  int i;
+  for (i=2; i<64; i++){
+    if (cur->fdt[i] != NULL) {
+      file_close(cur->fdt[i]);
+      cur->fdt[i] = NULL;
+    }
+  }
+  file_close(cur->running_file);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -221,14 +362,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  lock_acquire(&filesys_lock);
   /* Open executable file. */
   file = filesys_open (file_name);
   if (file == NULL) 
     {
+      lock_release(&filesys_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
-
+  file_deny_write (file);
+  thread_current()->running_file = file;
+  lock_release(&filesys_lock);
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -312,7 +457,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  if (!success) {
+    file_close (file);
+    thread_current()->running_file = NULL;
+  }
   return success;
 }
 

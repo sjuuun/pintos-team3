@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <hash.h>
 #include <stdint.h>
 #include "threads/synch.h"
 #include "filesys/file.h"
@@ -116,6 +117,9 @@ struct thread
     int next_fd;			/* Next smallest FD */
     struct file *running_file;		/* File pointer for running file. */
 #endif
+    
+    /* VM */
+    struct hash vm;			/* hash table for vm_entry */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

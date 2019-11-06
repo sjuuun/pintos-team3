@@ -21,6 +21,7 @@ struct vm_entry
   uint32_t vpn;					/* Virtual Page Number */
   bool writable;				/* Read/Write Permission */
   enum vpage_type vp_type;			/* Type of virtual page */
+  struct hash_elem vm_elem;
   // TODO: reference to the file object and offset
   uint32_t d_size;
   // TODO: loaction in the swap area

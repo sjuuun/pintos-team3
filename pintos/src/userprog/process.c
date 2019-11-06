@@ -141,6 +141,8 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  
+  /* Todo : initializing the hash table using the vm_init() */  
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -239,6 +241,8 @@ process_exit (void)
     }
   }
   file_close(cur->running_file);
+  /* Todo : add vm_entry delete function */
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -563,7 +567,15 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           palloc_free_page (kpage);
           return false; 
         }
+      
+      /* For VM; delete (allocating and mappint physical page part) */
 
+      /* Todo : 
+		* Create vm entry (use malloc) 
+		* Setting vm_entry members, offset & size of file to read
+		  when vpage is required, zero byte to pad at the end, ..
+		* Add vm_entry to hash table by insert_vme()		*/
+  
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
@@ -589,6 +601,11 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+  /* Todo : 
+	    * Create vm_entry
+	    * Set up vm_entry members
+	    * Using insert_vme(), add vm_entry to hash table */
+  
   return success;
 }
 

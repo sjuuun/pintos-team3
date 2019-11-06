@@ -143,7 +143,7 @@ start_process (void *file_name_)
   bool success;
   
   /* Todo : initializing the hash table using the vm_init() */  
-
+  vm_init(thread_current()->vm);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -242,7 +242,7 @@ process_exit (void)
   }
   file_close(cur->running_file);
   /* Todo : add vm_entry delete function */
-
+  vm_destroy(cur->vm);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -549,25 +549,25 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
+      /*uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
         return false;
-
+      */
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+      /*if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
           return false; 
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
-
+      */
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
+      /*if (!install_page (upage, kpage, writable)) 
         {
           palloc_free_page (kpage);
           return false; 
         }
-      
+      */
       /* For VM; delete (allocating and mappint physical page part) */
 
       /* Todo : 
@@ -575,7 +575,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		* Setting vm_entry members, offset & size of file to read
 		  when vpage is required, zero byte to pad at the end, ..
 		* Add vm_entry to hash table by insert_vme()		*/
-  
+ 
+
+ 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;

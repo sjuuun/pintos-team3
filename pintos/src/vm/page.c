@@ -11,7 +11,7 @@ vm_init (struct hash *vm)
 {
   // start_process call this function to initialize hash table.
   // TODO: 
-  
+  hash_init(vm, vm_hash_func, vm_less_func, NULL); 
 }
 
 /* Hash table delete. */
@@ -19,8 +19,9 @@ void
 vm_destroy (struct hash *vm)
 {
   // process_exit should call this function to remove vm_entries.
-  // TODO: destroy hash with destroy_hash(h, delete_vme?) Update current thread's hash to NULL.
-
+  // TODO: destroy hash with destroy_hash(h, delete_vme?) 
+  //       Update current thread's hash to NULL.
+  hash_destroy(vm, delete_vme);
 }
 
 /* Search vm_entry corresponding to vaddr in the address space of the current process. */

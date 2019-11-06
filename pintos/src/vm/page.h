@@ -4,12 +4,27 @@
 
 
 #include "lib/kernel/hash.h"
+#include "lib/stdbool.h"
+#include "lib/stdint.h"
+
+enum vpage_type
+  {
+     VP_ELF,
+     VP_FILE,
+     VP_SWAP
+  };
 
 
 struct vm_entry 
 {
   /* vm_entry */
-
+  uint32_t vpn;					/* Virtual Page Number */
+  bool writable;				/* Read/Write Permission */
+  enum vpage_type vp_type;			/* Type of virtual page */
+  // TODO: reference to the file object and offset
+  uint32_t d_size;
+  // TODO: loaction in the swap area
+  // TODO: In-memory flag - is it in memory? 
 };
 
 void vm_init (struct hash *vm);

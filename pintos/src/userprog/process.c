@@ -568,19 +568,28 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           return false; 
         }
       */
-      /* For VM; delete (allocating and mappint physical page part) */
+      /* For VM; delete (allocating and mapping physical page part) */
 
       /* Todo : 
 		* Create vm entry (use malloc) 
 		* Setting vm_entry members, offset & size of file to read
 		  when vpage is required, zero byte to pad at the end, ..
 		* Add vm_entry to hash table by insert_vme()		*/
- 
+      struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+      vme->writable = writable;
+      vme->vp_type = VP_ELF;			// ??
+      vme->vpn = pg_no(upage);
+      vme->file = file;
+      vme->read_bytes = page_read_bytes;
+      vme->zero_bytes = page_zero_bytes;
+      vme->offset = ofs;
 
- 
+      insert_vme(thread_current()->vm, vme);
+      
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
+      ofs += page_read_bytes;
       upage += PGSIZE;
     }
   return true;
@@ -607,7 +616,10 @@ setup_stack (void **esp)
 	    * Create vm_entry
 	    * Set up vm_entry members
 	    * Using insert_vme(), add vm_entry to hash table */
-  
+  struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+  // Need to setup vme members below
+     
+  insert_vme(thread_current()->vm, vme);  
   return success;
 }
 

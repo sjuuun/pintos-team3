@@ -617,7 +617,7 @@ setup_stack (void **esp)
 	    * Set up vm_entry members
 	    * Using insert_vme(), add vm_entry to hash table */
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
-        vme->vpn = kpage;
+        vme->vpn = pg_no(((uint8_t *) PHYS_BASE) - PGSIZE);
         vme->writable = true;
         vme->vp_type = VP_FILE;
         vme->file = NULL;
@@ -640,11 +640,11 @@ setup_stack (void **esp)
 bool
 handle_mm_fault (struct vm_entry *vme)          
 {
-  uint8_t *upage;
+  uint8_t *kpage;
   bool success = false;
-  upage = palloc_get_page (PAL_ZERO);
+  kpage = palloc_get_page (PAL_ZERO);
 
-  if (upage == NULL)
+  if (kpage == NULL)
     return success;
   
   /* check vp_type */
@@ -652,18 +652,18 @@ handle_mm_fault (struct vm_entry *vme)
     goto done;
 
   /* load file to upage */
-  if (!load_file(upage, vme))
+  if (!load_file(kpage, vme))
     goto done;
 
   /* Page table setup */
-  if (!install_page(upage, (void *)vme->vpn, vme->writable))
+  if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
     goto done;
 
   success = true;
 
   done:
     if(!success)
-      palloc_free_page(upage);
+      palloc_free_page(kpage);
     return success;
 }
 

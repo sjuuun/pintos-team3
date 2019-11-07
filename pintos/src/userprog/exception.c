@@ -169,9 +169,9 @@ page_fault (struct intr_frame *f)
   if (is_user_vaddr(fault_addr)) {
     struct vm_entry *vme = find_vme(fault_addr);
     if (vme == NULL)
-      kill(f);
+      exit(-1);
     success = handle_mm_fault(vme);
   }
   if (!success) 
-    kill(f);
+    exit(-1);
 }

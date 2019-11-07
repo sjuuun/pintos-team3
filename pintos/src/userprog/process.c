@@ -605,6 +605,7 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
+  /*
   kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
@@ -614,14 +615,24 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
-  /* Todo : 
+  */
+
+  /* TODO : 
 	    * Create vm_entry
 	    * Set up vm_entry members
 	    * Using insert_vme(), add vm_entry to hash table */
   struct vm_entry *vme = malloc(sizeof(struct vm_entry));
   // Need to setup vme members below
-     
-  insert_vme(&thread_current()->vm, vme);  
+  vme->vpn = kpage;
+  vme->writable = true;
+  vme->vp_type = VP_FILE;
+  vme->file = NULL;
+  vme->read_bytes = 0;
+  vme->zero_bytes = PG_SIZE;
+  vme->offset = 0;
+   
+  success = insert_vme(thread_current()->vm, vme);
+
   return success;
 }
 

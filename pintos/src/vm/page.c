@@ -2,11 +2,12 @@
 #include <debug.h>
 #include <stdio.h>
 #include <hash.h>
+#include "lib/string.h"
 #include "threads/interrupt.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-
+#include "filesys/file.h"
 
 /* Hash table initialization. */
 void
@@ -19,7 +20,7 @@ vm_init (struct hash *vm)
 void
 vm_destroy (struct hash *vm)
 {
-  hash_destroy(vm, delete_vme);
+  hash_destroy(vm, vm_destroy_func);
 }
 
 /* Search vm_entry corresponding to vaddr in the address space of the current process. */
@@ -30,7 +31,7 @@ find_vme (void *vaddr)
   struct hash_iterator iter;
 
   vpn = pg_no(vaddr);
-  hash_first (iter, &thread_current()->vm);
+  hash_first (&iter, &thread_current()->vm);
   while (hash_next (&iter)) {
     struct vm_entry *vme = hash_entry(hash_cur(&iter),
                                       struct vm_entry, vm_elem);
@@ -44,7 +45,7 @@ find_vme (void *vaddr)
 bool
 insert_vme (struct hash *vm, struct vm_entry *vme)
 {
-  if (hash_insert(vm, vme->vm_elem) == NULL)
+  if (hash_insert(vm, &vme->vm_elem) == NULL)
     return true;
   return false;
 }
@@ -53,7 +54,7 @@ insert_vme (struct hash *vm, struct vm_entry *vme)
 bool
 delete_vme (struct hash *vm, struct vm_entry *vme)
 {
-  if (hash_delete(vm, vme->vm_elem) == NULL)
+  if (hash_delete(vm, &vme->vm_elem) == NULL)
     return false;
   return true;
 }
@@ -66,7 +67,7 @@ vm_hash_func (const struct hash_elem *e, void *aux UNUSED)
   struct thread * cur;
 
   vme = hash_entry(e, struct vm_entry, vm_elem);
-  cur = thread_current()
+  cur = thread_current();
   return (unsigned) vme->vpn % (cur->vm.bucket_cnt);
 }
 
@@ -86,9 +87,25 @@ vm_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UN
 
 /* Remove memory of vm_entry. */
 static void
-vm_destroy_func (struct hasn_elem *e, void *aux UNUSED)
+vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
 {
   struct vm_entry *vme;
-  vme = hash_entry(e, struct vm_emtry, vm_elem);
+  vme = hash_entry(e, struct vm_entry, vm_elem);
+  delete_vme(&thread_current()->vm, vme);
   free(vme);
+}
+
+/* load a page to kaddr by <file, offset> of vme */
+bool
+load_file (void *kaddr, struct vm_entry *vme)
+{
+  /* TODO: Use file_read_at()
+	   Return file_read_at status
+	   Pad 0 as much as zero bytes */
+  int32_t load_bytes;
+  load_bytes = file_read_at(vme->file, kaddr, vme->read_bytes, vme->offset);
+  if (load_bytes != (int32_t) vme->read_bytes)
+    return false;
+  memset(kaddr + load_bytes, 0, vme->zero_bytes);
+  return true;
 }

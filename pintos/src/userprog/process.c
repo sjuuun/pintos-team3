@@ -15,9 +15,11 @@
 #include "threads/flags.h"
 #include "threads/init.h"
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -143,7 +145,7 @@ start_process (void *file_name_)
   bool success;
   
   /* Todo : initializing the hash table using the vm_init() */  
-  vm_init(thread_current()->vm);
+  vm_init(&thread_current()->vm);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -242,7 +244,7 @@ process_exit (void)
   }
   file_close(cur->running_file);
   /* Todo : add vm_entry delete function */
-  vm_destroy(cur->vm);
+  vm_destroy(&cur->vm);
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -584,7 +586,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->zero_bytes = page_zero_bytes;
       vme->offset = ofs;
 
-      insert_vme(thread_current()->vm, vme);
+      insert_vme(&thread_current()->vm, vme);
       
       /* Advance. */
       read_bytes -= page_read_bytes;
@@ -619,8 +621,39 @@ setup_stack (void **esp)
   struct vm_entry *vme = malloc(sizeof(struct vm_entry));
   // Need to setup vme members below
      
-  insert_vme(thread_current()->vm, vme);  
+  insert_vme(&thread_current()->vm, vme);  
   return success;
+}
+
+/* page fault handler */
+bool
+handle_mm_fault (struct vm_entry *vme)          
+{
+  uint8_t *upage;
+  bool success = false;
+  upage = palloc_get_page (PAL_ZERO);
+
+  if (upage == NULL)
+    return success;
+  
+  /* check vp_type */
+  if (!vme->vp_type == VP_ELF)
+    goto done;
+
+  /* load file to upage */
+  if (!load_file(upage, vme))
+    goto done;
+
+  /* Page table setup */
+  if (!install_page(upage, vme->vpn, vme->writable))
+    goto done;
+
+  success = true;
+
+  done:
+    if(!success)
+      palloc_free_page(upage);
+    return success;
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel

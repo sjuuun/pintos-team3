@@ -109,7 +109,7 @@ open (const char *file)
   /* Open the file corresponds to path in file
      Use struct file *filesys_open(const char *name) */
   is_user_address((void *)file);
-
+  lock_acquire(&filesys_lock);
   struct thread *cur = thread_current();
   if (cur->next_fd == 64)
     return -1;
@@ -185,6 +185,7 @@ void
 close (int fd)
 {
   /* Use void file_close(struct file *file) */
+  lock_acquire(&filesys_lock);
   struct thread *cur = thread_current();
   if (cur->fdt[fd] != NULL) {
     file_close(cur->fdt[fd]);
@@ -251,6 +252,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_OPEN:
       get_argument(esp, arg, 1);
       f->eax = open((const char *)arg[0]);
+      lock_release(&filesys_lock);
       break;
 
     case SYS_FILESIZE:
@@ -283,6 +285,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE:
       get_argument(esp, arg, 1);
       close((int)arg[0]);
+      lock_release(&filesys_lock);
       break;
 
     default:

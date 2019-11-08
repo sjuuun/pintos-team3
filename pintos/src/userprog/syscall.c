@@ -3,24 +3,36 @@
 #include "userprog/syscall.h"
 #include "userprog/process.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
-#include "lib/string.h"
-
+#include "vm/page.h"
 
 /* function prototypes */
 static void syscall_handler (struct intr_frame *);
 
 /* Check if input is user address */
-bool
+static struct vm_entry *
 is_user_address (void *addr)
 {
-  return ((uint32_t) addr >= 0x8048000) && ((uint32_t)addr <= 0xbffffffb);
+  if ( !(((uint32_t) addr >= 0x8048000) && ((uint32_t)addr <= 0xbffffffb)) )
+    exit(-1);
+  
+  /* Find corresponding vm_entry*/
+  return find_vme(addr);
 }
 
+/* Check validation of buffer in read system call. */
+/*
+static void
+is_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write)
+{
+
+}
+*/
 void
 syscall_init (void) 
 {
@@ -51,8 +63,7 @@ pid_t
 exec (const char *cmd_line)
 {
   /* Create child process and execute program */
-  if (!is_user_address((void *)cmd_line))
-    exit (-1);
+  is_user_address((void *)cmd_line);
 
   tid_t tid = process_execute(cmd_line);
   struct thread *child = get_child_process(tid);
@@ -79,8 +90,7 @@ create (const char *file, unsigned initial_size)
 {
   /* Create file which have size of initial_size
      Use bool filesys_create(const char *name, off_t initial_size) */
-  if (!is_user_address((void *)file))
-    exit(-1);
+  is_user_address((void *)file);
 
   return filesys_create(file, initial_size);
 }
@@ -98,8 +108,7 @@ open (const char *file)
 {
   /* Open the file corresponds to path in file
      Use struct file *filesys_open(const char *name) */
-  if (!is_user_address((void *)file))
-    exit(-1);
+  is_user_address((void *)file);
 
   struct thread *cur = thread_current();
   if (cur->next_fd == 64)
@@ -129,8 +138,7 @@ read (int fd, void *buffer, unsigned size)
 {
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
-  if (!is_user_address(buffer))
-    exit(-1);
+  is_user_address(buffer);
 
   lock_acquire(&filesys_lock);
   if (fd == 0)
@@ -145,8 +153,7 @@ write (int fd, const void *buffer, unsigned size)
 {
   /* Use void putbuf(const char *buffer, size_t n) for fd = 1, otherwise
      use off_t file_write(struct file *file, const void *buffer, off_t size) */
-  if (!is_user_address((void *)buffer))
-    exit(-1);
+  is_user_address((void *)buffer);
 
   lock_acquire(&filesys_lock);
   if (fd == 1) {
@@ -188,13 +195,12 @@ close (int fd)
 }
 
 /* Get argument from esp. */
-void
+static void
 get_argument (void *esp, int *arg, int count)
 {
   int i;
   for (i = 0; i < count; i++) {
-    if (!is_user_address(esp))
-      exit(-1);
+    is_user_address(esp);
     arg[i] = *(int *)esp;
     esp += sizeof(int);
   }

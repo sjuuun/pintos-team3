@@ -1,13 +1,12 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
 
-void syscall_init (void);
 
 typedef int pid_t;
-
 struct lock filesys_lock;
 
-bool is_user_address(void *);
+void syscall_init (void);
+
 void halt(void);
 void exit(int);
 pid_t exec(const char *);

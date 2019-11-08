@@ -40,9 +40,5 @@ void vm_destroy (struct hash *);
 struct vm_entry *find_vme (void *);
 bool insert_vme (struct hash *, struct vm_entry *);
 bool delete_vme (struct hash *, struct vm_entry *);
-static unsigned vm_hash_func (const struct hash_elem *, void *);
-static bool vm_less_func (const struct hash_elem *, 
-	const struct hash_elem *, void *);
-static void vm_destroy_func (struct hash_elem *, void *);
 bool load_file (void *, struct vm_entry *);
 #endif

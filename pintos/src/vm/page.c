@@ -9,6 +9,12 @@
 #include "threads/vaddr.h"
 #include "filesys/file.h"
 
+/* Function prototypes */
+static unsigned vm_hash_func (const struct hash_elem *, void *);
+static bool vm_less_func (const struct hash_elem *,
+                          const struct hash_elem *, void *);
+static void vm_destroy_func (struct hash_elem *, void*);
+
 /* Hash table initialization. */
 void
 vm_init (struct hash *vm)

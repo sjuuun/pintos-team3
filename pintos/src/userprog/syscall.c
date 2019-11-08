@@ -100,6 +100,7 @@ open (const char *file)
      Use struct file *filesys_open(const char *name) */
   if (!is_user_address((void *)file))
     exit(-1);
+
   struct thread *cur = thread_current();
   if (cur->next_fd == 64)
     return -1;
@@ -128,9 +129,9 @@ read (int fd, void *buffer, unsigned size)
 {
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
-
   if (!is_user_address(buffer))
     exit(-1);
+
   lock_acquire(&filesys_lock);
   if (fd == 0)
     return input_getc();
@@ -146,6 +147,7 @@ write (int fd, const void *buffer, unsigned size)
      use off_t file_write(struct file *file, const void *buffer, off_t size) */
   if (!is_user_address((void *)buffer))
     exit(-1);
+
   lock_acquire(&filesys_lock);
   if (fd == 1) {
     putbuf((char *)buffer, size);
@@ -185,14 +187,27 @@ close (int fd)
   }
 }
 
+/* Get argument from esp. */
+void
+get_argument (void *esp, int *arg, int count)
+{
+  int i;
+  for (i = 0; i < count; i++) {
+    if (!is_user_address(esp))
+      exit(-1);
+    arg[i] = *(int *)esp;
+    esp += sizeof(int);
+  }
+}
+
 /* Actual System call hander call System call */
 static void
 syscall_handler (struct intr_frame *f)
 {
   void *esp = f->esp;
   int number = *(int *)esp;
-  if (!is_user_address(esp))
-    exit(-1);
+  int arg[3];
+  esp += sizeof(int);
 
   /* System Call */
   switch (number) {
@@ -202,57 +217,70 @@ syscall_handler (struct intr_frame *f)
       break;
 
     case SYS_EXIT:
-      exit(*((int *)esp + 1));
+      get_argument(esp, arg, 1);
+      exit((int)arg[0]);
       break;
 
     case SYS_EXEC:
-      f->eax = exec(*((char **)esp + 1));
+      get_argument(esp, arg, 1);
+      f->eax = exec((const char *)arg[0]);
       break;
 
     case SYS_WAIT:
-      f->eax = wait(*((int *)esp + 1));
+      get_argument(esp, arg, 1);
+      f->eax = wait((int)arg[0]);
       break;
 
     /* File related system calls */
     case SYS_CREATE:
-      f->eax = create(*((char **)esp + 1), *((int *)esp + 2));
+      get_argument(esp, arg, 2);
+      f->eax = create((const char *)arg[0], (unsigned)arg[1]);
       break;
 
     case SYS_REMOVE:
-      f->eax = remove(*((char **)esp + 1));
+      get_argument(esp, arg, 1);
+      f->eax = remove((const char *)arg[0]);
       break;
 
     case SYS_OPEN:
-      f->eax = open(*((char **)esp + 1));
+      get_argument(esp, arg, 1);
+      f->eax = open((const char *)arg[0]);
       break;
 
     case SYS_FILESIZE:
-      f->eax = filesize(*((int *)esp +1));
+      get_argument(esp, arg, 1);
+      f->eax = filesize((int)arg[0]);
       break;
 
     case SYS_READ:
-      f->eax = read(*((int *)esp +1), *((void **)esp +2), *((int *)esp +3));
+      get_argument(esp, arg, 3);
+      f->eax = read((int)arg[0], (void *)arg[1], (unsigned)arg[2]);
       lock_release(&filesys_lock);
       break;
 
     case SYS_WRITE:
-      f->eax = write(*((int *)esp+1), *((char **)esp+2), *((int *)esp+3));
+      get_argument(esp, arg, 3);
+      f->eax = write((int)arg[0], (const void *)arg[1], (unsigned)arg[2]);
       lock_release(&filesys_lock);
       break;
 
     case SYS_SEEK:
-      seek(*((int *)esp + 1), *((int *)esp + 2));
+      get_argument(esp, arg, 2);
+      seek((int)arg[0], (unsigned)arg[1]);
       break;
 
     case SYS_TELL:
-      f->eax = tell(*((int *)esp +1));
+      get_argument(esp, arg, 1);
+      f->eax = tell((int)arg[0]);
       break;
 
     case SYS_CLOSE:
-      close(*((int *)esp + 1));
+      get_argument(esp, arg, 1);
+      close((int)arg[0]);
       break;
 
     default:
       break;
+
   }
 }

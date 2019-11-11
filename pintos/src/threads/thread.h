@@ -120,6 +120,9 @@ struct thread
     
     /* VM */
     struct hash vm;			/* hash table for vm_entry */
+    
+    /* memory-mapped file */
+    struct list mmap_list;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

@@ -3,6 +3,8 @@
 
 
 typedef int pid_t;
+typedef int mapid_t;
+
 struct lock filesys_lock;
 
 void syscall_init (void);

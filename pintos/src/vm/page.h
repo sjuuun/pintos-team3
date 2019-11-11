@@ -4,6 +4,7 @@
 
 
 #include "lib/kernel/hash.h"
+#include "lib/kernel/list.h"
 #include "lib/stdbool.h"
 #include "lib/stdint.h"
 #include "lib/stddef.h"
@@ -16,6 +17,14 @@ enum vpage_type
      VP_SWAP
   };
 
+
+struct mmap_file
+{
+  int mapid;					/* mapping id */
+  struct file *file;				/* mapped file */
+  struct list_elem mmap_elem;			
+  struct list vme_list;				/* mapped file's vm_entries */
+};
 
 struct vm_entry 
 {
@@ -30,7 +39,8 @@ struct vm_entry
   size_t zero_bytes;
   size_t offset;
 
-  //uint32_t d_size;
+  /* For mmap files */
+  struct list_elem mmap_elem; 
   // TODO: loaction in the swap area
   // TODO: In-memory flag - is it in memory? 
 };

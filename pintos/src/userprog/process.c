@@ -278,6 +278,14 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
+
+struct file *
+process_get_file (int fd)
+{
+  if (fd > 64 || fd < 0) 
+    return NULL;
+  return thread_current()->fdt[fd];
+}
 
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
@@ -619,7 +627,7 @@ setup_stack (void **esp)
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
         vme->vpn = pg_no(((uint8_t *) PHYS_BASE) - PGSIZE);
         vme->writable = true;
-        vme->vp_type = VP_FILE;
+        //vme->vp_type = VP_FILE;
         vme->file = NULL;
         vme->read_bytes = 0;
         vme->zero_bytes = PGSIZE;
@@ -648,17 +656,41 @@ handle_mm_fault (struct vm_entry *vme)
     return success;
   
   /* check vp_type */
+  switch(vme->vp_type) {
+    case VP_ELF:
+      if (!load_file(kpage, vme))		/* load file */
+        goto done;
+      if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+        goto done;
+      break;
+
+    case VP_FILE:
+      if (!load_file(kpage, vme))
+        goto done;
+      if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+        goto done;
+      break;
+
+    case VP_SWAP:
+
+      break;
+
+    default:
+      // expand stack ? 
+      goto done;
+  }    
+  /*
   if (!vme->vp_type == VP_ELF)
     goto done;
-
+  */
   /* load file to upage */
-  if (!load_file(kpage, vme))
+  /*if (!load_file(kpage, vme))
     goto done;
-
+  */
   /* Page table setup */
-  if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+  /*if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
     goto done;
-
+  */
   success = true;
 
   done:

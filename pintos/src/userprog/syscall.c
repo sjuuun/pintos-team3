@@ -6,6 +6,7 @@
 #include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/filesys.h"
@@ -162,7 +163,7 @@ read (int fd, void *buffer, unsigned size)
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
   lock_acquire(&filesys_lock);
-
+  //mapid_t mapid = mmap(fd, buffer);
   if (fd == 0)
     return input_getc();
   else
@@ -175,7 +176,7 @@ write (int fd, const void *buffer, unsigned size)
   /* Use void putbuf(const char *buffer, size_t n) for fd = 1, otherwise
      use off_t file_write(struct file *file, const void *buffer, off_t size) */
   lock_acquire(&filesys_lock);
-
+  
   if (fd == 1) {
     putbuf((char *)buffer, size);
     return size;
@@ -206,13 +207,76 @@ close (int fd)
 {
   /* Use void file_close(struct file *file) */
   lock_acquire(&filesys_lock);
-
   struct thread *cur = thread_current();
   if (cur->fdt[fd] != NULL) {
     file_close(cur->fdt[fd]);
     cur->fdt[fd] = NULL;
     if (fd < cur->next_fd)
       cur->next_fd = fd;
+  }
+}
+
+/* For Memory-mapped file system */
+
+/* allocate mapid and return it */
+int
+mmap (int fd, void *addr)
+{
+  //mapid_t mapid;
+  if (fd < 0 || fd > 63)
+    return -1;
+  if (!is_user_vaddr(addr))
+    return -1;
+  struct file *m_file = file_reopen(process_get_file(fd));
+  if(m_file == NULL)
+    return -1;
+
+  /* TODO: allocate mapid,
+		create mmap_file and initialize,
+		create vm_entry and initialize, 
+		return mapid			*/ 
+  
+  struct mmap_file *mmf = malloc(sizeof (struct mmap_file));
+  struct vm_entry *vme = malloc(sizeof (struct vm_entry));
+  mmf->file = m_file;
+  mmf->mapid = fd;  // How allocate mapid for each file ? 
+
+  vme->vpn = pg_no(addr);
+  vme->file = m_file;
+  vme->vp_type = VP_FILE;
+
+  list_push_front(&mmf->vme_list, &vme->mmap_elem);
+  list_push_front(&thread_current()->mmap_list, &mmf->mmap_elem);
+  return mmf->mapid;
+}
+
+void
+do_munmap (struct mmap_file *m_file)
+{
+  while(!list_empty(&m_file->vme_list)) {
+    struct list_elem *vm_elem = list_front(&m_file->vme_list);
+    struct vm_entry *vme = list_entry(vm_elem, struct vm_entry, mmap_elem);
+    free(vme);
+  }
+}
+
+/* remove mmap_file and close the file */
+void
+munmap (mapid_t mapid)
+{
+  struct thread *cur = thread_current();
+  struct list m_list = cur->mmap_list;
+  struct list_elem *e;
+  for(e = list_begin(&m_list); e != list_end(&m_list); e = list_next(e)) {
+    struct mmap_file *m_file = list_entry(e, struct mmap_file, mmap_elem);
+    if (m_file->mapid == mapid) {
+      struct list_elem *fr = list_front(&m_list);
+      list_remove(fr);
+      do_munmap(m_file);
+      free(m_file);
+      file_close(m_file->file);
+      free(m_file);
+    }
   }
 }
 

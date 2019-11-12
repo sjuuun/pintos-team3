@@ -239,6 +239,7 @@ process_exit (void)
   for (i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {
       file_close(cur->fdt[i]);
+      //do_munmap(cur->fdt[i]);
       cur->fdt[i] = NULL;
     }
   }
@@ -262,7 +263,7 @@ process_exit (void)
       }
     }
   }
-
+  
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

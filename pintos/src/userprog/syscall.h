@@ -2,6 +2,8 @@
 #define USERPROG_SYSCALL_H
 
 
+#include "vm/page.h"
+
 typedef int pid_t;
 typedef int mapid_t;
 
@@ -24,6 +26,7 @@ unsigned tell(int);
 void close(int);
 
 int mmap(int, void*);
+void do_munmap(struct mmap_file *);
 void munmap(int);
 
 #endif /* userprog/syscall.h */

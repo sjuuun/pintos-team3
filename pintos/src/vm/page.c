@@ -29,7 +29,8 @@ vm_destroy (struct hash *vm)
   hash_destroy(vm, vm_destroy_func);
 }
 
-/* Search vm_entry corresponding to vaddr in the address space of the current process. */
+/* Search vm_entry corresponding to vaddr in the address space of 
+						the current process. */
 struct vm_entry *
 find_vme (void *vaddr)
 {
@@ -44,19 +45,22 @@ find_vme (void *vaddr)
     if (vme->vpn == vpn)
       return vme;
   }
-  while (!list_empty(&thread_current()->mmap_list)) {
-    struct list_elem *fr = list_front(&thread_current()->mmap_list);
-    struct mmap_file *mmf = list_entry(fr, struct mmap_file, mf_elem);
-    if (!list_empty(&mmf->vme_list)) {
-      struct list_elem *v = list_front(&mmf->vme_list);
-      while (v != NULL) {
-        struct vm_entry *vme2 = list_entry(v, struct vm_entry, mmap_elem);
-        if (vme2->vpn == vpn)
-          return vme2;
+
+  struct thread *cur = thread_current();
+  if (!list_empty(&cur->mmap_list)) {
+    struct list_elem *e; 
+    for(e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list);
+                                e = list_next(e)) {
+      struct mmap_file *mmf = list_entry(e, struct mmap_file, mf_elem);
+      struct list_elem *v;
+      for(v = list_begin(&mmf->vme_list); v != list_end(&mmf->vme_list);
+                                v = list_next(v)){
+        struct vm_entry *vme = list_entry(v, struct vm_entry, mmap_elem);
+        if (vme->vpn == vpn)
+          return vme;
       }
     }
   }
-  
   return NULL;
 }
 

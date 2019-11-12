@@ -18,7 +18,7 @@
 
 /* function prototypes */
 static void syscall_handler (struct intr_frame *);
-static void do_munmap(struct mmap_file *);
+//static void do_munmap(struct mmap_file *);
 /* Check if input is user address */
 static struct vm_entry *
 is_user_address (void *addr)
@@ -299,16 +299,19 @@ munmap (mapid_t mapid)
 {
   struct thread *cur = thread_current();
   struct list m_list = cur->mmap_list;
-  struct list_elem *e;
-  for(e = list_begin(&m_list); e != list_end(&m_list); e = list_next(e)) {
-    struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
-    if (m_file == NULL) break;
-    if (m_file->mapid == mapid) {
-      do_munmap(m_file);
-      list_remove(&m_file->mf_elem);
-      file_close(m_file->file);
-      free(m_file);
-      break;
+  struct list_elem *e, *e_next;
+  if(!list_empty(&m_list)) {
+    for(e = list_begin(&m_list); e != list_end(&m_list); e = e_next) {
+      struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
+      e_next = list_next(e);
+      if (m_file == NULL) break;
+      if (m_file->mapid == mapid) {
+        do_munmap(m_file);
+        list_remove(&m_file->mf_elem);
+        file_close(m_file->file);
+        free(m_file);
+        break;
+      }
     }
   }
 }

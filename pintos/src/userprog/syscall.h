@@ -23,5 +23,7 @@ void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
 
+int mmap(int, void*);
+void munmap(int);
 
 #endif /* userprog/syscall.h */

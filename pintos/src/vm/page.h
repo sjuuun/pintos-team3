@@ -22,7 +22,7 @@ struct mmap_file
 {
   int mapid;					/* mapping id */
   struct file *file;				/* mapped file */
-  struct list_elem mmap_elem;			
+  struct list_elem mf_elem;			
   struct list vme_list;				/* mapped file's vm_entries */
 };
 

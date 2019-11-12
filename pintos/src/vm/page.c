@@ -44,6 +44,19 @@ find_vme (void *vaddr)
     if (vme->vpn == vpn)
       return vme;
   }
+  while (!list_empty(&thread_current()->mmap_list)) {
+    struct list_elem *fr = list_front(&thread_current()->mmap_list);
+    struct mmap_file *mmf = list_entry(fr, struct mmap_file, mf_elem);
+    if (!list_empty(&mmf->vme_list)) {
+      struct list_elem *v = list_front(&mmf->vme_list);
+      while (v != NULL) {
+        struct vm_entry *vme2 = list_entry(v, struct vm_entry, mmap_elem);
+        if (vme2->vpn == vpn)
+          return vme2;
+      }
+    }
+  }
+  
   return NULL;
 }
 

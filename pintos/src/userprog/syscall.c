@@ -2,6 +2,7 @@
 #include "devices/input.h"
 #include "userprog/syscall.h"
 #include "userprog/process.h"
+#include "userprog/pagedir.h"
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
@@ -9,13 +10,14 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "vm/page.h"
 
 /* function prototypes */
 static void syscall_handler (struct intr_frame *);
-
+static void do_munmap(struct mmap_file *);
 /* Check if input is user address */
 static struct vm_entry *
 is_user_address (void *addr)
@@ -240,13 +242,16 @@ mmap (int fd, void *addr)
   struct vm_entry *vme = malloc(sizeof (struct vm_entry));
   mmf->file = m_file;
   mmf->mapid = fd;  // How allocate mapid for each file ? 
-
+  list_init(&mmf->vme_list);
   vme->vpn = pg_no(addr);
   vme->file = m_file;
   vme->vp_type = VP_FILE;
-
+  vme->offset = 0;
+  vme->read_bytes = file_length(m_file);
+  vme->zero_bytes = PGSIZE - vme->read_bytes;
+  vme->writable = 1;
   list_push_front(&mmf->vme_list, &vme->mmap_elem);
-  list_push_front(&thread_current()->mmap_list, &mmf->mmap_elem);
+  list_push_front(&thread_current()->mmap_list, &mmf->mf_elem);
   return mmf->mapid;
 }
 
@@ -254,8 +259,12 @@ void
 do_munmap (struct mmap_file *m_file)
 {
   while(!list_empty(&m_file->vme_list)) {
-    struct list_elem *vm_elem = list_front(&m_file->vme_list);
-    struct vm_entry *vme = list_entry(vm_elem, struct vm_entry, mmap_elem);
+    struct list_elem *fr = list_front(&m_file->vme_list);
+    struct vm_entry *vme = list_entry(fr, struct vm_entry, mmap_elem);
+    /*if (pagedir_is_dirty(&thread_current()->pagedir, &(vme->vpn)<<PGBITS) {
+      file_write_at(m_file->file, ,vme->read_bytes ,vme->offset);
+    }*/
+    list_remove(fr);
     free(vme);
   }
 }
@@ -268,14 +277,16 @@ munmap (mapid_t mapid)
   struct list m_list = cur->mmap_list;
   struct list_elem *e;
   for(e = list_begin(&m_list); e != list_end(&m_list); e = list_next(e)) {
-    struct mmap_file *m_file = list_entry(e, struct mmap_file, mmap_elem);
+    struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
+    if (m_file == NULL) break;
     if (m_file->mapid == mapid) {
+      list_remove(&m_file->mf_elem);
       struct list_elem *fr = list_front(&m_list);
       list_remove(fr);
       do_munmap(m_file);
-      free(m_file);
       file_close(m_file->file);
       free(m_file);
+      break;
     }
   }
 }
@@ -377,6 +388,16 @@ syscall_handler (struct intr_frame *f)
       get_argument(esp, arg, 1);
       close((int)arg[0]);
       lock_release(&filesys_lock);
+      break;
+
+    case SYS_MMAP:
+      get_argument(esp, arg, 2);
+      f->eax = mmap((int)arg[0], (void *)arg[1]);
+      break;
+    
+    case SYS_MUNMAP:
+      get_argument(esp, arg, 1);
+      munmap((mapid_t)arg[0]);
       break;
 
     default:

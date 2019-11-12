@@ -8,6 +8,7 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/malloc.h"
+#include "threads/pte.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/file.h"
@@ -31,13 +32,13 @@ is_user_address (void *addr)
 
 /* Check validation of buffer in read system call. */
 static void
-is_valid_buffer (void *buffer, unsigned size, void *esp) //, bool to_write)
+is_valid_buffer (void *buffer, unsigned size, void *esp UNUSED) //, bool to_write)
 {
   //if (buffer < esp)
   //  exit(-1);
 
   unsigned i;
-  int tmp = pg_no(buffer);
+  unsigned tmp = pg_no(buffer);
   for (i = 0; i < size; ) {
   //for (i = 0; i <= (size / PGSIZE + 1); i++) {
     // Check writable?
@@ -52,7 +53,7 @@ is_valid_buffer (void *buffer, unsigned size, void *esp) //, bool to_write)
 
 /* Check validation of char * in exec, create, open, write system call. */
 static void
-is_valid_char (const char *str, void *esp)
+is_valid_char (const char *str, void *esp UNUSED)
 {
   //if ((void *)str < esp)
   //  exit(-1);
@@ -224,11 +225,14 @@ close (int fd)
 int
 mmap (int fd, void *addr)
 {
-  //mapid_t mapid;
+  /* Check validation of input */
   if (fd < 0 || fd > 63)
     return -1;
   if (!is_user_vaddr(addr))
     return -1;
+  if (pagedir_get_page((uint32_t *)pd_no(addr), addr) != NULL)
+    return -1;
+
   struct file *m_file = file_reopen(process_get_file(fd));
   if(m_file == NULL)
     return -1;
@@ -261,10 +265,12 @@ do_munmap (struct mmap_file *m_file)
   while(!list_empty(&m_file->vme_list)) {
     struct list_elem *fr = list_front(&m_file->vme_list);
     struct vm_entry *vme = list_entry(fr, struct vm_entry, mmap_elem);
-    /*if (pagedir_is_dirty(&thread_current()->pagedir, &(vme->vpn)<<PGBITS) {
-      file_write_at(m_file->file, ,vme->read_bytes ,vme->offset);
-    }*/
+    uint32_t addr = (vme->vpn) << PGBITS;
+    if (pagedir_is_dirty((uint32_t *)pd_no((const void *)addr), (void *)addr)) {
+      file_write_at(m_file->file, (const void *)addr, vme->read_bytes, vme->offset);
+    }
     list_remove(fr);
+    delete_vme(&thread_current()->vm, vme);
     free(vme);
   }
 }
@@ -280,10 +286,8 @@ munmap (mapid_t mapid)
     struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
     if (m_file == NULL) break;
     if (m_file->mapid == mapid) {
-      list_remove(&m_file->mf_elem);
-      struct list_elem *fr = list_front(&m_list);
-      list_remove(fr);
       do_munmap(m_file);
+      list_remove(&m_file->mf_elem);
       file_close(m_file->file);
       free(m_file);
       break;

@@ -245,6 +245,24 @@ process_exit (void)
   file_close(cur->running_file);
   /* Todo : add vm_entry delete function */
   vm_destroy(&cur->vm);
+
+  /* Todo : delete vm_entry in mmap_list */
+  if (!list_empty(&cur->mmap_list)) {
+    struct list_elem *e;
+    for(e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list);
+				e = list_next(e)) {
+      struct mmap_file *mmf = list_entry(e, struct mmap_file, mf_elem);
+      struct list_elem *v, *v_next;
+      for(v = list_begin(&mmf->vme_list); v != list_end(&mmf->vme_list);
+				v = v_next){
+        struct vm_entry *vme = list_entry(v, struct vm_entry, mmap_elem);
+        v_next = list_next(v);
+        list_remove(v);
+        free(vme);
+      }
+    }
+  }
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

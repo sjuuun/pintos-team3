@@ -226,15 +226,33 @@ int
 mmap (int fd, void *addr)
 {
   /* Check validation of input */
-  if (fd < 0 || fd > 63)
+  if (fd < 2 || fd > 63)
     return -1;
-  if (!is_user_vaddr(addr))
+  if (!is_user_vaddr(addr) || addr == 0 || ((uint32_t)addr % PGSIZE) != 0)
     return -1;
-  if (pagedir_get_page((uint32_t *)pd_no(addr), addr) != NULL)
+  if (pagedir_get_page(thread_current()->pagedir, addr) != NULL)
     return -1;
+  
+  /*struct thread *cur = thread_current();
+  struct list m_list = cur->mmap_list;
+  struct list_elem *e;
+  for(e = list_begin(&m_list); e != list_end(&m_list); e = list_next(e)) {
+    struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
+    if (m_file == NULL) break;
+    struct list_elem *i;
+    if (!list_empty(&m_file->vme_list)) {
+      for(i = list_begin(&m_file->vme_list); i != list_end(&m_file->vme_list);
+			i = list_next(i)) {
+        struct vm_entry *v = list_entry(i, struct vm_entry, mmap_elem);
+        if (v->vpn == pg_no(addr))
+          return -1;
+      }
+    }
+  }*/
+
 
   struct file *m_file = file_reopen(process_get_file(fd));
-  if(m_file == NULL)
+  if(m_file == NULL || file_length(m_file) == 0)
     return -1;
 
   /* TODO: allocate mapid,
@@ -266,11 +284,11 @@ do_munmap (struct mmap_file *m_file)
     struct list_elem *fr = list_front(&m_file->vme_list);
     struct vm_entry *vme = list_entry(fr, struct vm_entry, mmap_elem);
     uint32_t addr = (vme->vpn) << PGBITS;
-    if (pagedir_is_dirty((uint32_t *)pd_no((const void *)addr), (void *)addr)) {
-      file_write_at(m_file->file, (const void *)addr, vme->read_bytes, vme->offset);
+    if (pagedir_is_dirty(thread_current()->pagedir, (void *)addr)) {
+      file_write_at(m_file->file, (const void *)addr, vme->read_bytes, 
+			vme->offset);
     }
     list_remove(fr);
-    delete_vme(&thread_current()->vm, vme);
     free(vme);
   }
 }

@@ -678,7 +678,9 @@ handle_mm_fault (struct vm_entry *vme)
       break;
 
     case VP_SWAP:
-
+      swap_in(vme);
+      if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+        goto done;
       break;
 
     default:

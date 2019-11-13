@@ -47,14 +47,14 @@ struct vm_entry
   struct list_elem mmap_elem;		/* list_elem in mmap_file */
 
   /* Swap */
-  bool accessable;			/* Check page is in memory */
-  struct block *swap;			/* Location in swap area */
+  bool accessible;			/* Check page is in memory */
+  uint32_t swap_slot;			/* Location in swap area */
 };
 
 /* Data structure representing each physical page. */
 struct page
 {
-  uint32_t pfn;				/* Physical Frame number */
+  void *paddr;				/* Physical Frame number */
   struct thread *thread;		/* Thread own this page */
   struct vm_entry *vme;			/* Related vm_entry */
   struct list_elem elem;		/* list_elem in lru_list */

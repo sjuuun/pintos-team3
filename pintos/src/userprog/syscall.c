@@ -249,6 +249,7 @@ mmap (int fd, void *addr)
       }
     }
   }*/
+  if (find_vme(addr) != NULL) return -1;
 
 
   struct file *m_file = file_reopen(process_get_file(fd));
@@ -261,18 +262,28 @@ mmap (int fd, void *addr)
 		return mapid			*/ 
   
   struct mmap_file *mmf = malloc(sizeof (struct mmap_file));
-  struct vm_entry *vme = malloc(sizeof (struct vm_entry));
   mmf->file = m_file;
   mmf->mapid = fd;  // How allocate mapid for each file ? 
   list_init(&mmf->vme_list);
-  vme->vpn = pg_no(addr);
-  vme->file = m_file;
-  vme->vp_type = VP_FILE;
-  vme->offset = 0;
-  vme->read_bytes = file_length(m_file);
-  vme->zero_bytes = PGSIZE - vme->read_bytes;
-  vme->writable = 1;
-  list_push_front(&mmf->vme_list, &vme->mmap_elem);
+  int i;
+  int iter = file_length(m_file) / PGSIZE;
+  for(i = 0; i <= iter; i++) {
+    struct vm_entry *vme = malloc(sizeof (struct vm_entry));
+    vme->vpn = pg_no(addr + PGSIZE*i);
+    vme->file = m_file;
+    vme->vp_type = VP_FILE;
+    vme->offset = PGSIZE*i;
+    if(i == iter) {
+      vme->read_bytes = file_length(m_file) % PGSIZE;
+      vme->zero_bytes = PGSIZE - vme->read_bytes;
+    }
+    else {
+      vme->read_bytes = PGSIZE;
+      vme->zero_bytes = 0;
+    }
+    vme->writable = 1;
+    list_push_front(&mmf->vme_list, &vme->mmap_elem);
+  }
   list_push_front(&thread_current()->mmap_list, &mmf->mf_elem);
   return mmf->mapid;
 }

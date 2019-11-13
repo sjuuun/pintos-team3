@@ -4,6 +4,8 @@
 
 #include "vm/page.h"
 
+#define EXIT -1
+
 typedef int pid_t;
 typedef int mapid_t;
 

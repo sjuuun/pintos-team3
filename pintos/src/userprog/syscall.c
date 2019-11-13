@@ -230,27 +230,7 @@ mmap (int fd, void *addr)
     return -1;
   if (!is_user_vaddr(addr) || addr == 0 || ((uint32_t)addr % PGSIZE) != 0)
     return -1;
-  if (pagedir_get_page(thread_current()->pagedir, addr) != NULL)
-    return -1;
-  
-  /*struct thread *cur = thread_current();
-  struct list m_list = cur->mmap_list;
-  struct list_elem *e;
-  for(e = list_begin(&m_list); e != list_end(&m_list); e = list_next(e)) {
-    struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
-    if (m_file == NULL) break;
-    struct list_elem *i;
-    if (!list_empty(&m_file->vme_list)) {
-      for(i = list_begin(&m_file->vme_list); i != list_end(&m_file->vme_list);
-			i = list_next(i)) {
-        struct vm_entry *v = list_entry(i, struct vm_entry, mmap_elem);
-        if (v->vpn == pg_no(addr))
-          return -1;
-      }
-    }
-  }*/
   if (find_vme(addr) != NULL) return -1;
-
 
   struct file *m_file = file_reopen(process_get_file(fd));
   if(m_file == NULL || file_length(m_file) == 0)
@@ -309,14 +289,13 @@ void
 munmap (mapid_t mapid)
 {
   struct thread *cur = thread_current();
-  struct list m_list = cur->mmap_list;
-  struct list_elem *e, *e_next;
-  if(!list_empty(&m_list)) {
-    for(e = list_begin(&m_list); e != list_end(&m_list); e = e_next) {
+  struct list *m_list = &cur->mmap_list;
+  struct list_elem *e;
+  if(!list_empty(m_list)) {
+    for(e = list_begin(m_list); e != list_end(m_list); e = list_next(e)) {
       struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
-      e_next = list_next(e);
       if (m_file == NULL) break;
-      if (m_file->mapid == mapid) {
+      if (m_file->mapid == mapid || mapid == EXIT) {
         do_munmap(m_file);
         list_remove(&m_file->mf_elem);
         file_close(m_file->file);

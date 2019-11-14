@@ -28,11 +28,9 @@
 #include "userprog/gdt.h"
 #include "userprog/syscall.h"
 #include "userprog/tss.h"
+#include "vm/swap.h"
 #else
 #include "tests/threads/tests.h"
-#endif
-#ifdef VM
-#include "vm/swap.h"
 #endif
 #ifdef FILESYS
 #include "devices/block.h"
@@ -103,7 +101,7 @@ main (void)
   paging_init ();
 
   /* Initialize physical memory system. */
-#ifdef VM
+#ifdef USERPROG
   lru_init();
 #endif
 

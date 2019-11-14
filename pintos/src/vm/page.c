@@ -125,10 +125,12 @@ load_file (void *kaddr, struct vm_entry *vme)
   /* TODO: Use file_read_at()
 	   Return file_read_at status
 	   Pad 0 as much as zero bytes */
-  int32_t load_bytes;
-  load_bytes = file_read_at(vme->file, kaddr, vme->read_bytes, vme->offset);
-  if (load_bytes != (int32_t) vme->read_bytes)
-    return false;
+  int32_t load_bytes = 0;
+  if (vme->file != NULL) {
+    load_bytes = file_read_at(vme->file, kaddr, vme->read_bytes, vme->offset);
+    if (load_bytes != (int32_t) vme->read_bytes)
+      return false;
+  }
   memset(kaddr + load_bytes, 0, vme->zero_bytes);
   return true;
 }

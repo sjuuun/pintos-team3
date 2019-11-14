@@ -25,7 +25,7 @@ lru_init (void)
 }
 
 struct page *
-get_page (enum palloc_flags flag, struct vm_entry *vme)
+get_page (enum palloc_flags flag)
 {
   void *addr = palloc_get_page(flag);
   /* Allocation failed - swap out */
@@ -38,7 +38,7 @@ get_page (enum palloc_flags flag, struct vm_entry *vme)
 
   page->paddr = addr;
   page->thread = thread_current();
-  page->vme = vme;
+  //page->vme = vme;
   list_push_back(&lru_list, &page->elem);
   return page;
 }
@@ -70,29 +70,28 @@ swap_init (void)
   struct block *block = block_get_role(BLOCK_SWAP);
   
   /* Divide block->size by 8 - one bit means one swap slot */
-  size_t bit_cnt = ((uint32_t)block->size) / PAGE_PER_SLOT;
+  size_t bit_cnt = ((uint32_t)block_size(block)) / PAGE_PER_SLOT;
   swap_table = bitmap_create(bit_cnt);
   if (swap_table == NULL)
     exit(-1);
 }
 
 static void
-swap_write (struct vm_entry *vme) {
+swap_write (struct vm_entry *vme, void *kaddr) {
   struct block *block = block_get_role(BLOCK_SWAP);
   uint32_t swap_slot = bitmap_scan (swap_table, 0, 0, false);
-  uint32_t addr = (uint32_t) (vme->vpn << PGBITS);
+  //uint32_t addr = (uint32_t) (vme->vpn << PGBITS);
   int i;
   for (i = 0; i < PAGE_PER_SLOT; i++) {
-    block_write (block, swap_slot + i,
-		(void *) (addr + BLOCK_SECTOR_SIZE * i));
+    block_write (block, PAGE_PER_SLOT*swap_slot + i,
+		(void *) (kaddr + BLOCK_SECTOR_SIZE * i));
   }
   bitmap_set (swap_table, swap_slot, true);
   vme->swap_slot = swap_slot;
-  vme->vp_type = VP_SWAP;
 }
 
 void
-swap_in (struct vm_entry *vme)
+swap_in (struct vm_entry *vme, void *kaddr)
 {
   /* Load from swap area. */
   ASSERT (vme->vp_type == VP_SWAP);
@@ -100,15 +99,14 @@ swap_in (struct vm_entry *vme)
 
   struct block *block = block_get_role(BLOCK_SWAP);
   int i;
-  uint32_t addr = (uint32_t) (vme->vpn << PGBITS);
+  uint32_t vaddr = (uint32_t) (vme->vpn << PGBITS);
   for (i = 0; i < PAGE_PER_SLOT; i++) {
-    block_read (block, vme->swap_slot + i,
-		(void *) (addr + BLOCK_SECTOR_SIZE * i));
+    block_read (block, PAGE_PER_SLOT*vme->swap_slot + i,
+		(void *) (kaddr + BLOCK_SECTOR_SIZE * i));
   }
   bitmap_set (swap_table, vme->swap_slot, false);
-  vme->vp_type = VP_FILE;
   vme->accessible = true;
-  pagedir_set_accessed (thread_current()->pagedir, (const void *)addr, true);
+  pagedir_set_accessed (thread_current()->pagedir, (const void *)vaddr, true);
 }
 
 void
@@ -121,23 +119,27 @@ swap_out (void)
   struct vm_entry *vme = victim->vme;
   void *vaddr = (void *)(vme->vpn << PGBITS);
 
-  /* Write if page type is VP_FILE */
-  ASSERT (vme->vp_type != VP_SWAP);
-  if (vme->vp_type == VP_FILE) {
-    /* First if data is from FILE and dirty */
-    if ((vme->file != NULL) && (pagedir_is_dirty(victim->thread->pagedir, vaddr))) {
-      file_write_at(vme->file, vaddr, vme->read_bytes, vme->offset);
-    }
-    /* If stack page */
-    else {
-      swap_write(vme);
-    }
+  switch(vme->vp_type) {
+    case VP_ELF:
+      //swap_write(vme);
+      //vme->vp_type = VP_SWAP;
+      break;
+    case VP_FILE:
+      if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {
+        file_write_at(vme->file, vaddr, vme->read_bytes, vme->offset);
+      }
+      break;
+    case VP_SWAP:
+      swap_write(vme, victim->paddr);
+      break;
+    default:
+      exit(-1);
   }
 
   /* Free page and update page table */
   vme->accessible = false;
-  pagedir_set_accessed (victim->thread->pagedir, vaddr, false);
-
+  //pagedir_set_accessed (victim->thread->pagedir, vaddr, false);
+  pagedir_clear_page(victim->thread->pagedir, vaddr);
   /* Free victim */
   palloc_free_page(victim->paddr);
   free(victim);

@@ -20,6 +20,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/page.h"
+#include "vm/swap.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -616,14 +617,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
+  struct page *kpage;
   bool success = false;
 
   
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->paddr, true);
       if (success) {
         *esp = PHYS_BASE;
         /* TODO : 
@@ -633,18 +634,19 @@ setup_stack (void **esp)
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
         vme->vpn = pg_no(((uint8_t *) PHYS_BASE) - PGSIZE);
         vme->writable = true;
-        //vme->vp_type = VP_FILE;
+        vme->vp_type = VP_SWAP;
         vme->file = NULL;
         vme->read_bytes = 0;
         vme->zero_bytes = PGSIZE;
         vme->offset = 0;
+        kpage->vme = vme;        
 
         success = insert_vme(&thread_current()->vm, vme);
         if (!success)
           free(vme);
       }
       if (!success)
-        palloc_free_page (kpage);
+        free_page (kpage->paddr);
     }
 
   return success;
@@ -654,32 +656,36 @@ setup_stack (void **esp)
 bool
 handle_mm_fault (struct vm_entry *vme)          
 {
-  uint8_t *kpage;
+  struct page *kpage;
   bool success = false;
-  kpage = palloc_get_page (PAL_ZERO);
-
+  kpage = get_page (PAL_ZERO | PAL_USER);
+  kpage->vme = vme;
   if (kpage == NULL)
     return success;
   
   /* check vp_type */
   switch(vme->vp_type) {
     case VP_ELF:
-      if (!load_file(kpage, vme))		/* load file */
+      if (!load_file(kpage->paddr, vme))		/* load file */
         goto done;
-      if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+      if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
+						vme->writable))
         goto done;
       break;
 
     case VP_FILE:
-      if (!load_file(kpage, vme))
+      if (!load_file(kpage->paddr, vme))
         goto done;
-      if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+      if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
+						vme->writable))
         goto done;
       break;
 
     case VP_SWAP:
-      swap_in(vme);
-      if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
+      swap_in(vme, kpage->paddr);
+      //if(vme->file != NULL) vme->vp_type = VP_ELF;
+      if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
+						vme->writable))
         goto done;
       break;
 
@@ -687,23 +693,12 @@ handle_mm_fault (struct vm_entry *vme)
       // expand stack ? 
       goto done;
   }    
-  /*
-  if (!vme->vp_type == VP_ELF)
-    goto done;
-  */
-  /* load file to upage */
-  /*if (!load_file(kpage, vme))
-    goto done;
-  */
-  /* Page table setup */
-  /*if (!install_page((void *)(vme->vpn << PGBITS), kpage, vme->writable))
-    goto done;
-  */
+  
   success = true;
 
   done:
     if(!success)
-      palloc_free_page(kpage);
+      free_page(kpage->paddr);
     return success;
 }
 

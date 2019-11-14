@@ -10,11 +10,11 @@ struct list lru_list;
 
 void lru_init (void);
 
-struct page * get_page (enum palloc_flags, struct vm_entry *);
+struct page * get_page (enum palloc_flags);
 void free_page (void *);
 
 void swap_init (void);
-void swap_in (struct vm_entry *);
+void swap_in (struct vm_entry *, void *);
 void swap_out (void);
 
 #endif

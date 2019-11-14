@@ -600,6 +600,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = page_zero_bytes;
       vme->offset = ofs;
+      vme->accessible = false;
 
       insert_vme(&thread_current()->vm, vme);
       
@@ -639,6 +640,7 @@ setup_stack (void **esp)
         vme->read_bytes = 0;
         vme->zero_bytes = PGSIZE;
         vme->offset = 0;
+        vme->accessible = true;
         kpage->vme = vme;        
 
         success = insert_vme(&thread_current()->vm, vme);
@@ -649,6 +651,45 @@ setup_stack (void **esp)
         free_page (kpage->paddr);
     }
 
+  return success;
+}
+
+
+/* Grow Stack */
+bool
+grow_stack (void *addr)
+{
+  struct page *kpage;
+  bool success = false;
+
+  /* Check esp limit */
+  uint32_t gaddr = ((uint32_t)pg_round_up(addr)) - PGSIZE;
+  if (gaddr < ((uint32_t)PHYS_BASE - (1 << 23)))
+    return success;
+
+  kpage = get_page (PAL_USER | PAL_ZERO);
+  if (kpage != NULL)
+    {
+      success = install_page ((void *)gaddr, kpage->paddr, true);
+      if (success) {
+        struct vm_entry *vme = malloc (sizeof(struct vm_entry));
+        vme->vpn = pg_no((void *)gaddr);
+        vme->writable = true;
+        vme->vp_type = VP_SWAP;
+        vme->file = NULL;
+        vme->read_bytes = 0;
+        vme->zero_bytes = PGSIZE;
+        vme->offset = 0;
+        vme->accessible = true;
+        kpage->vme = vme;
+
+        success = insert_vme(&thread_current()->vm, vme);
+        if (!success)
+          free(vme);
+      }
+      if (!success)
+        free_page (kpage->paddr);
+    }
   return success;
 }
 

@@ -168,9 +168,18 @@ page_fault (struct intr_frame *f)
   bool success = false;
   if (is_user_vaddr(fault_addr)) {
     struct vm_entry *vme = find_vme(fault_addr);
-    if (vme == NULL)
-      exit(-1);
-    success = handle_mm_fault(vme);
+    if (vme != NULL)
+      success = handle_mm_fault(vme);
+    else {
+      /* Check stack growth */
+      uint32_t valid = ((uint32_t)f->esp) - 32;
+      if ((uint32_t)fault_addr >= valid) {
+        success = grow_stack(fault_addr);
+      }
+      else {
+        exit(-1);
+      }
+    }
   }
   if (!success) 
     exit(-1);

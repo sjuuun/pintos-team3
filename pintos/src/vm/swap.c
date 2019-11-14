@@ -94,9 +94,6 @@ void
 swap_in (struct vm_entry *vme, void *kaddr)
 {
   /* Load from swap area. */
-  ASSERT (vme->vp_type == VP_SWAP);
-  ASSERT (!vme->accessible);
-
   struct block *block = block_get_role(BLOCK_SWAP);
   int i;
   uint32_t vaddr = (uint32_t) (vme->vpn << PGBITS);

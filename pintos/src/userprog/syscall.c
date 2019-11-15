@@ -33,19 +33,18 @@ is_user_address (void *addr)
 
 /* Check validation of buffer in read system call. */
 static void
-is_valid_buffer (void *buffer, unsigned size, void *esp UNUSED) //, bool to_write)
+is_valid_buffer (void *buffer, unsigned size, void *esp) //, bool to_write)
 {
-  //if (buffer < esp)
-  //  exit(-1);
-
   unsigned i;
   unsigned tmp = pg_no(buffer);
   for (i = 0; i < size; ) {
-  //for (i = 0; i <= (size / PGSIZE + 1); i++) {
-    // Check writable?
     struct vm_entry *vme = is_user_address(buffer + i);
-    if (vme == NULL)
-      exit(-1);
+    if (vme == NULL) {
+      if ((uint32_t)buffer + i >= (uint32_t)esp)
+        grow_stack(buffer + i);
+      else
+        exit(-1);
+    }
     tmp = pg_no(buffer+i);
     while(tmp == pg_no(buffer+i))
       i++;
@@ -54,14 +53,15 @@ is_valid_buffer (void *buffer, unsigned size, void *esp UNUSED) //, bool to_writ
 
 /* Check validation of char * in exec, create, open, write system call. */
 static void
-is_valid_char (const char *str, void *esp UNUSED)
+is_valid_char (const char *str, void *esp)
 {
-  //if ((void *)str < esp)
-  //  exit(-1);
-
   struct vm_entry *vme = is_user_address((void *)str);
-  if (vme == NULL)
-    exit(-1);
+  if (vme == NULL) {
+    if ((uint32_t)str >= (uint32_t) esp)
+      grow_stack((void *)str);
+    else
+      exit(-1);
+  }
 }
 
 void

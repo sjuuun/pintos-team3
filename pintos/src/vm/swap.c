@@ -79,13 +79,12 @@ swap_write (struct vm_entry *vme, void *kaddr) {
   struct block *block = block_get_role(BLOCK_SWAP);
 
   /* Scan bitmap to find free slot */
-  uint32_t swap_slot = bitmap_scan(swap_table, 0, PAGE_PER_SLOT, false);
+  uint32_t swap_slot = bitmap_scan_and_flip(swap_table, 0, PAGE_PER_SLOT, false);
   int i;
   for (i = 0; i < PAGE_PER_SLOT; i++) {
     block_write (block, swap_slot + i,
 		(void *) (kaddr + BLOCK_SECTOR_SIZE * i));
   }
-  bitmap_set_multiple (swap_table, swap_slot, PAGE_PER_SLOT, true);
   vme->swap_slot = swap_slot;
 }
 

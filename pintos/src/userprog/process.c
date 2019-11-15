@@ -663,8 +663,9 @@ grow_stack (void *addr)
   bool success = false;
 
   /* Check esp limit */
-  uint32_t gaddr = ((uint32_t)pg_round_up(addr)) - PGSIZE;
-  if (gaddr < ((uint32_t)PHYS_BASE - (1 << 23)))
+  uint32_t gvpn = (uint32_t)pg_no(addr);
+  uint32_t gaddr = gvpn << PGBITS;
+  if (gaddr < ((uint32_t)PHYS_BASE - (1 << 23)) )
     return success;
 
   kpage = get_page (PAL_USER | PAL_ZERO);
@@ -673,7 +674,7 @@ grow_stack (void *addr)
       success = install_page ((void *)gaddr, kpage->paddr, true);
       if (success) {
         struct vm_entry *vme = malloc (sizeof(struct vm_entry));
-        vme->vpn = pg_no((void *)gaddr);
+        vme->vpn = gvpn;
         vme->writable = true;
         vme->vp_type = VP_SWAP;
         vme->file = NULL;

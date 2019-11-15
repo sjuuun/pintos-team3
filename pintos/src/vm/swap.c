@@ -79,7 +79,10 @@ swap_init (void)
 static void
 swap_write (struct vm_entry *vme, void *kaddr) {
   struct block *block = block_get_role(BLOCK_SWAP);
-  uint32_t swap_slot = bitmap_scan (swap_table, 0, 0, false);
+
+  /* Scan bitmap to find free slot */
+  uint32_t swap_slot = 0;
+  while (bitmap_test(swap_table, swap_slot)) swap_slot++;
   //uint32_t addr = (uint32_t) (vme->vpn << PGBITS);
   int i;
   for (i = 0; i < PAGE_PER_SLOT; i++) {
@@ -118,8 +121,10 @@ swap_out (void)
 
   switch(vme->vp_type) {
     case VP_ELF:
-      //swap_write(vme);
-      //vme->vp_type = VP_SWAP;
+      if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {
+        swap_write(vme, victim->paddr);
+        vme->vp_type = VP_SWAP;
+      }
       break;
     case VP_FILE:
       if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {

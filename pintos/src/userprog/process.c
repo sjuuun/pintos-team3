@@ -724,7 +724,7 @@ handle_mm_fault (struct vm_entry *vme)
 
     case VP_SWAP:
       swap_in(vme, kpage->paddr);
-      //if(vme->file != NULL) vme->vp_type = VP_ELF;
+      if(vme->file != NULL) vme->vp_type = VP_ELF;
       if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
 						vme->writable))
         goto done;

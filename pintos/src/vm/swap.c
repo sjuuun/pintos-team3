@@ -69,10 +69,7 @@ swap_init (void)
 {
   /* Initialize swap table - bitmap. */
   struct block *block = block_get_role(BLOCK_SWAP);
-  
-  /* Divide block->size by 8 - one bit means one swap slot */
-  size_t bit_cnt = ((uint32_t)block_size(block)) / PAGE_PER_SLOT;
-  swap_table = bitmap_create(bit_cnt);
+  swap_table = bitmap_create((size_t) block_size(block));
   if (swap_table == NULL)
     exit(-1);
 }
@@ -82,15 +79,13 @@ swap_write (struct vm_entry *vme, void *kaddr) {
   struct block *block = block_get_role(BLOCK_SWAP);
 
   /* Scan bitmap to find free slot */
-  uint32_t swap_slot = 0;
-  while (bitmap_test(swap_table, swap_slot)) swap_slot++;
-  //uint32_t addr = (uint32_t) (vme->vpn << PGBITS);
+  uint32_t swap_slot = bitmap_scan(swap_table, 0, PAGE_PER_SLOT, false);
   int i;
   for (i = 0; i < PAGE_PER_SLOT; i++) {
-    block_write (block, PAGE_PER_SLOT*swap_slot + i,
+    block_write (block, swap_slot + i,
 		(void *) (kaddr + BLOCK_SECTOR_SIZE * i));
   }
-  bitmap_set (swap_table, swap_slot, true);
+  bitmap_set_multiple (swap_table, swap_slot, PAGE_PER_SLOT, true);
   vme->swap_slot = swap_slot;
 }
 
@@ -100,14 +95,11 @@ swap_in (struct vm_entry *vme, void *kaddr)
   /* Load from swap area. */
   struct block *block = block_get_role(BLOCK_SWAP);
   int i;
-  uint32_t vaddr = (uint32_t) (vme->vpn << PGBITS);
   for (i = 0; i < PAGE_PER_SLOT; i++) {
-    block_read (block, PAGE_PER_SLOT*vme->swap_slot + i,
+    block_read (block, vme->swap_slot + i,
 		(void *) (kaddr + BLOCK_SECTOR_SIZE * i));
   }
-  bitmap_set (swap_table, vme->swap_slot, false);
-  vme->accessible = true;
-  pagedir_set_accessed (thread_current()->pagedir, (const void *)vaddr, true);
+  bitmap_set_multiple (swap_table, vme->swap_slot, PAGE_PER_SLOT, false);
 }
 
 void
@@ -141,7 +133,7 @@ swap_out (void)
 
   /* Free page and update page table */
   vme->accessible = false;
-  //pagedir_set_accessed (victim->thread->pagedir, vaddr, false);
+
   pagedir_clear_page(victim->thread->pagedir, vaddr);
   /* Free victim */
   palloc_free_page(victim->paddr);

@@ -7,6 +7,7 @@
 #include "lib/kernel/list.h"
 #include "userprog/syscall.h"
 #include "userprog/pagedir.h"
+#include "threads/interrupt.h"
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/thread.h"
@@ -123,7 +124,9 @@ swap_out (void)
       break;
     case VP_FILE:
       if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {
+        lock_acquire(&filesys_lock);
         file_write_at(vme->file, vaddr, vme->read_bytes, vme->offset);
+        lock_release(&filesys_lock);
       }
       break;
     case VP_SWAP:

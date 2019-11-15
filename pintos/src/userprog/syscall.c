@@ -277,8 +277,10 @@ do_munmap (struct mmap_file *m_file)
     struct vm_entry *vme = list_entry(fr, struct vm_entry, mmap_elem);
     uint32_t addr = (vme->vpn) << PGBITS;
     if (pagedir_is_dirty(thread_current()->pagedir, (void *)addr)) {
+      lock_acquire(&filesys_lock);
       file_write_at(m_file->file, (const void *)addr, vme->read_bytes, 
 			vme->offset);
+      lock_release(&filesys_lock);
     }
     list_remove(fr);
     if(pagedir_get_page(thread_current()->pagedir, (void *)addr) != NULL)

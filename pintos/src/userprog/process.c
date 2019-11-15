@@ -700,11 +700,13 @@ handle_mm_fault (struct vm_entry *vme)
 {
   struct page *kpage;
   bool success = false;
+  bool have_lock = false;
   kpage = get_page (PAL_ZERO | PAL_USER);
   kpage->vme = vme;
   if (kpage == NULL)
     return success;
-  
+  if (!lock_held_by_current_thread(&filesys_lock))
+    have_lock = lock_try_acquire(&filesys_lock); 
   /* check vp_type */
   switch(vme->vp_type) {
     case VP_ELF:
@@ -734,7 +736,9 @@ handle_mm_fault (struct vm_entry *vme)
     default:
       // expand stack ? 
       goto done;
-  }    
+  } 
+  if(have_lock)
+    lock_release(&filesys_lock);   
   vme->accessible = true;
   success = true;
 

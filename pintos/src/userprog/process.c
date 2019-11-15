@@ -734,7 +734,7 @@ handle_mm_fault (struct vm_entry *vme)
       // expand stack ? 
       goto done;
   }    
-  
+  vme->accessible = true;
   success = true;
 
   done:

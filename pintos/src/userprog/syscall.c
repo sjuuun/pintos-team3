@@ -15,6 +15,7 @@
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "vm/page.h"
+#include "vm/swap.h"
 
 /* function prototypes */
 static void syscall_handler (struct intr_frame *);
@@ -280,6 +281,8 @@ do_munmap (struct mmap_file *m_file)
 			vme->offset);
     }
     list_remove(fr);
+    if(pagedir_get_page(thread_current()->pagedir, (void *)addr) != NULL)
+      free_page(pagedir_get_page(thread_current()->pagedir, (void *)addr));
     free(vme);
   }
 }

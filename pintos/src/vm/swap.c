@@ -51,16 +51,17 @@ free_page (void *addr)
   for (e = list_front(&lru_list); e != list_end(&lru_list); e = list_next(e)) {
     page = list_entry (e, struct page, elem);
     if (page->paddr == addr) {
-      break;
+      goto done;
     }
   }
+  /* Not reached */
+  exit(-1);
 
-  if (page == NULL) {
-    exit(-1);
-  }
-  list_remove(&page->elem);
-  palloc_free_page(page->paddr);
-  free(page);
+  done:
+    list_remove(&page->elem);
+    palloc_free_page(page->paddr);
+    pagedir_clear_page(page->thread->pagedir, (void *)(page->vme->vpn << PGBITS));
+    free(page);
 }
 
 void

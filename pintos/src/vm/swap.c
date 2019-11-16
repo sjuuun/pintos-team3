@@ -115,11 +115,10 @@ swap_out (void)
 
   switch(vme->vp_type) {
     case VP_ELF:
-      //if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {
+      if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {
         swap_write(vme, victim->paddr);
-        //vme->vp_type = VP_SWAP;
-      //}
-      vme->vp_type = VP_SWAP;
+        vme->vp_type = VP_SWAP;
+      }
       break;
     case VP_FILE:
       if (pagedir_is_dirty(victim->thread->pagedir, vaddr)) {

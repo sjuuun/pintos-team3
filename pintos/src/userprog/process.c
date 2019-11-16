@@ -727,16 +727,20 @@ handle_mm_fault (struct vm_entry *vme)
 
     case VP_SWAP:
       swap_in(vme, kpage->paddr);
-      if(vme->file != NULL) vme->vp_type = VP_ELF;
+      
       if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
 						vme->writable))
         goto done;
+      if(vme->file != NULL) {
+        vme->vp_type = VP_ELF;
+        pagedir_set_dirty (thread_current()->pagedir, (void *)(vme->vpn << PGBITS), true);
+      }
       break;
 
     default:
       // expand stack ? 
       goto done;
-  } 
+  }
   if(have_lock)
     lock_release(&filesys_lock);   
   vme->accessible = true;

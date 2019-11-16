@@ -39,7 +39,6 @@ get_page (enum palloc_flags flag)
 
   page->paddr = addr;
   page->thread = thread_current();
-  //page->vme = vme;
   list_push_back(&lru_list, &page->elem);
   return page;
 }
@@ -61,8 +60,30 @@ free_page (void *addr)
   done:
     list_remove(&page->elem);
     palloc_free_page(page->paddr);
-    pagedir_clear_page(page->thread->pagedir, (void *)(page->vme->vpn << PGBITS));
+    pagedir_clear_page(page->thread->pagedir, 
+				(void *)(page->vme->vpn << PGBITS));
     free(page);
+}
+
+static struct page*
+get_victim (void)
+{ 
+  struct list_elem *e;
+  struct page *victim;
+  for(e = list_begin(&lru_list); e != list_end(&lru_list); e = list_next(e)){
+    victim = list_entry(e, struct page, elem);
+    uint32_t *pd = victim->thread->pagedir;
+    void *vpage = (void *) (victim->vme->vpn << PGBITS);
+    if (pagedir_is_accessed(pd, vpage)) {
+      pagedir_set_accessed(pd, vpage, false);
+    }
+    else {
+      list_remove(e);
+      return victim;
+    }
+
+  }
+  return victim;
 }
 
 void
@@ -108,8 +129,9 @@ swap_out (void)
 {
   /* Choose victim and say goodbye */
   ASSERT (!list_empty(&lru_list));
-  struct page *victim = list_entry(list_pop_front(&lru_list),
-						struct page, elem);
+  //struct page *victim = list_entry(list_pop_front(&lru_list),
+//						struct page, elem);
+  struct page *victim = get_victim();
   struct vm_entry *vme = victim->vme;
   void *vaddr = (void *)(vme->vpn << PGBITS);
 

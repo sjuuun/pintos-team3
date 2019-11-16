@@ -242,7 +242,7 @@ process_exit (void)
   vm_destroy(&cur->vm);
   /* unmap mapped files */
   munmap(EXIT);
-  
+   
   for (i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {
       file_close(cur->fdt[i]);
@@ -251,7 +251,15 @@ process_exit (void)
     }
   }
   file_close(cur->running_file);
- 
+  struct list_elem *e;
+  for(e = list_begin(&lru_list); e != list_end(&lru_list); e = list_next(e)) {
+    struct page *page = list_entry(e, struct page, elem);
+    if(thread_current() == page->thread) {
+      list_remove(e);
+      //free(page);
+    }
+  }
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;

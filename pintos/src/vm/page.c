@@ -42,7 +42,7 @@ find_vme (void *vaddr)
   while (hash_next (&iter)) {
     struct vm_entry *vme = hash_entry(hash_cur(&iter),
                                       struct vm_entry, vm_elem);
-    if (vme->vpn == vpn)
+    if (pg_no(vme->vaddr) == vpn)
       return vme;
   }
 
@@ -56,7 +56,7 @@ find_vme (void *vaddr)
       for(v = list_begin(&mmf->vme_list); v != list_end(&mmf->vme_list);
                                 v = list_next(v)){
         struct vm_entry *vme = list_entry(v, struct vm_entry, mmap_elem);
-        if (vme->vpn == vpn)
+        if (pg_no(vme->vaddr) == vpn)
           return vme;
       }
     }
@@ -91,7 +91,7 @@ vm_hash_func (const struct hash_elem *e, void *aux UNUSED)
 
   vme = hash_entry(e, struct vm_entry, vm_elem);
   cur = thread_current();
-  return (unsigned) vme->vpn % (cur->vm.bucket_cnt);
+  return (unsigned) pg_no(vme->vaddr) % (cur->vm.bucket_cnt);
 }
 
 /* Compare address values of two entered hash_elem.
@@ -105,7 +105,7 @@ vm_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UN
   vma = hash_entry(a, struct vm_entry, vm_elem);
   vmb = hash_entry(b, struct vm_entry, vm_elem);
   
-  return vma->vpn < vmb->vpn;
+  return vma->vaddr < vmb->vaddr;
 }
 
 /* Remove memory of vm_entry. */

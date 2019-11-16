@@ -60,8 +60,7 @@ free_page (void *addr)
   done:
     list_remove(&page->elem);
     palloc_free_page(page->paddr);
-    pagedir_clear_page(page->thread->pagedir, 
-				(void *)(page->vme->vpn << PGBITS));
+    pagedir_clear_page(page->thread->pagedir, page->vme->vaddr);
     free(page);
 }
 
@@ -73,7 +72,7 @@ get_victim (void)
   for(e = list_begin(&lru_list); e != list_end(&lru_list); e = list_next(e)){
     victim = list_entry(e, struct page, elem);
     uint32_t *pd = victim->thread->pagedir;
-    void *vpage = (void *) (victim->vme->vpn << PGBITS);
+    void *vpage = victim->vme->vaddr;
     if (pagedir_is_accessed(pd, vpage)) {
       pagedir_set_accessed(pd, vpage, false);
     }
@@ -133,7 +132,7 @@ swap_out (void)
 //						struct page, elem);
   struct page *victim = get_victim();
   struct vm_entry *vme = victim->vme;
-  void *vaddr = (void *)(vme->vpn << PGBITS);
+  void *vaddr = vme->vaddr;
 
   switch(vme->vp_type) {
     case VP_ELF:

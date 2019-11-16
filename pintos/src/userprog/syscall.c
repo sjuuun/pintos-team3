@@ -250,7 +250,7 @@ mmap (int fd, void *addr)
   int iter = file_length(m_file) / PGSIZE;
   for(i = 0; i <= iter; i++) {
     struct vm_entry *vme = malloc(sizeof (struct vm_entry));
-    vme->vpn = pg_no(addr + PGSIZE*i);
+    vme->vaddr = addr + PGSIZE*i;
     vme->file = m_file;
     vme->vp_type = VP_FILE;
     vme->offset = PGSIZE*i;
@@ -275,7 +275,7 @@ do_munmap (struct mmap_file *m_file)
   while(!list_empty(&m_file->vme_list)) {
     struct list_elem *fr = list_front(&m_file->vme_list);
     struct vm_entry *vme = list_entry(fr, struct vm_entry, mmap_elem);
-    uint32_t addr = (vme->vpn) << PGBITS;
+    uint32_t addr = vme->vaddr;
     if (pagedir_is_dirty(thread_current()->pagedir, (void *)addr)) {
       lock_acquire(&filesys_lock);
       file_write_at(m_file->file, (const void *)addr, vme->read_bytes, 

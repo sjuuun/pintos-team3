@@ -603,7 +603,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       struct vm_entry *vme = malloc(sizeof(struct vm_entry));
       vme->writable = writable;
       vme->vp_type = VP_ELF;			// ??
-      vme->vpn = pg_no(upage);
+      vme->vaddr = upage;
       vme->file = file;
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = page_zero_bytes;
@@ -641,7 +641,7 @@ setup_stack (void **esp)
 	    * Set up vm_entry members
 	    * Using insert_vme(), add vm_entry to hash table */
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
-        vme->vpn = pg_no(((uint8_t *) PHYS_BASE) - PGSIZE);
+        vme->vaddr = PHYS_BASE - PGSIZE;
         vme->writable = true;
         vme->vp_type = VP_SWAP;
         vme->file = NULL;
@@ -671,8 +671,7 @@ grow_stack (void *addr)
   bool success = false;
 
   /* Check esp limit */
-  uint32_t gvpn = (uint32_t)pg_no(addr);
-  uint32_t gaddr = gvpn << PGBITS;
+  uint32_t gaddr = (uint32_t)pg_no(addr) << PGBITS;
   if (gaddr < ((uint32_t)PHYS_BASE - (1 << 23)) )
     return success;
 
@@ -682,7 +681,7 @@ grow_stack (void *addr)
       success = install_page ((void *)gaddr, kpage->paddr, true);
       if (success) {
         struct vm_entry *vme = malloc (sizeof(struct vm_entry));
-        vme->vpn = gvpn;
+        vme->vaddr = gaddr;
         vme->writable = true;
         vme->vp_type = VP_SWAP;
         vme->file = NULL;
@@ -720,35 +719,30 @@ handle_mm_fault (struct vm_entry *vme)
     case VP_ELF:
       if (!load_file(kpage->paddr, vme))		/* load file */
         goto done;
-      if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
-						vme->writable))
-        goto done;
       break;
 
     case VP_FILE:
       if (!load_file(kpage->paddr, vme))
         goto done;
-      if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
-						vme->writable))
-        goto done;
       break;
 
     case VP_SWAP:
       swap_in(vme, kpage->paddr);
-      
-      if (!install_page((void *)(vme->vpn << PGBITS), kpage->paddr, 
-						vme->writable))
-        goto done;
-      if(vme->file != NULL) {
-        vme->vp_type = VP_ELF;
-        pagedir_set_dirty (thread_current()->pagedir, (void *)(vme->vpn << PGBITS), true);
-      }
       break;
 
     default:
       // expand stack ? 
       goto done;
   }
+  /* Setup page table */
+  if (!install_page(vme->vaddr, kpage->paddr, vme->writable))
+    goto done;
+  /* Check VP_ELF is swapped */
+  if ((vme->vp_type == VP_SWAP) && (vme->file != NULL)) {
+    vme->vp_type = VP_ELF;
+    pagedir_set_dirty (thread_current()->pagedir, vme->vaddr, true);
+  }
+
   if(have_lock)
     lock_release(&filesys_lock);   
   vme->accessible = true;

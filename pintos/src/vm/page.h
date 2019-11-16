@@ -32,12 +32,12 @@ struct mmap_file
 struct vm_entry 
 {
   /* Virtual page status */
-  uint32_t vpn;				/* Virtual Page Number */
+  void *vaddr;				/* Virtual page address */
   enum vpage_type vp_type;		/* Type of virtual page */
   bool writable;			/* Read/Write Permission */
 
   /* Reference to the file object and offset */
-  struct file* file;
+  struct file *file;
   size_t read_bytes;
   size_t zero_bytes;
   size_t offset;

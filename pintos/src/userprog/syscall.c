@@ -237,17 +237,12 @@ mmap (int fd, void *addr)
   if(m_file == NULL || file_length(m_file) == 0)
     return -1;
 
-  /* TODO: allocate mapid,
-		create mmap_file and initialize,
-		create vm_entry and initialize, 
-		return mapid			*/ 
-  
   struct mmap_file *mmf = malloc(sizeof (struct mmap_file));
   mmf->file = m_file;
   mmf->mapid = fd;  // How allocate mapid for each file ? 
   list_init(&mmf->vme_list);
-  int i;
-  int iter = file_length(m_file) / PGSIZE;
+ 
+  int i, iter = file_length(m_file) / PGSIZE;
   for(i = 0; i <= iter; i++) {
     struct vm_entry *vme = malloc(sizeof (struct vm_entry));
     vme->vaddr = addr + PGSIZE*i;
@@ -262,7 +257,7 @@ mmap (int fd, void *addr)
       vme->read_bytes = PGSIZE;
       vme->zero_bytes = 0;
     }
-    vme->writable = 1;
+    vme->writable = true;
     list_push_front(&mmf->vme_list, &vme->mmap_elem);
   }
   list_push_front(&thread_current()->mmap_list, &mmf->mf_elem);
@@ -275,16 +270,16 @@ do_munmap (struct mmap_file *m_file)
   while(!list_empty(&m_file->vme_list)) {
     struct list_elem *fr = list_front(&m_file->vme_list);
     struct vm_entry *vme = list_entry(fr, struct vm_entry, mmap_elem);
-    uint32_t addr = vme->vaddr;
-    if (pagedir_is_dirty(thread_current()->pagedir, (void *)addr)) {
+    void *addr = vme->vaddr;
+    if (pagedir_is_dirty(thread_current()->pagedir, addr)) {
       lock_acquire(&filesys_lock);
-      file_write_at(m_file->file, (const void *)addr, vme->read_bytes, 
+      file_write_at(m_file->file, addr, vme->read_bytes, 
 			vme->offset);
       lock_release(&filesys_lock);
     }
     list_remove(fr);
-    if(pagedir_get_page(thread_current()->pagedir, (void *)addr) != NULL)
-      free_page(pagedir_get_page(thread_current()->pagedir, (void *)addr));
+    if(pagedir_get_page(thread_current()->pagedir, addr) != NULL)
+      free_page(pagedir_get_page(thread_current()->pagedir, addr));
     free(vme);
   }
 }
@@ -305,7 +300,6 @@ munmap (mapid_t mapid)
         list_remove(&m_file->mf_elem);
         file_close(m_file->file);
         free(m_file);
-        break;
       }
     }
   }

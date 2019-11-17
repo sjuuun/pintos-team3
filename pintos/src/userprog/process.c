@@ -608,7 +608,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = page_zero_bytes;
       vme->offset = ofs;
-      vme->accessible = false;
 
       insert_vme(&thread_current()->vm, vme);
       
@@ -648,7 +647,6 @@ setup_stack (void **esp)
         vme->read_bytes = 0;
         vme->zero_bytes = PGSIZE;
         vme->offset = 0;
-        vme->accessible = true;
         kpage->vme = vme;        
 
         success = insert_vme(&thread_current()->vm, vme);
@@ -688,7 +686,6 @@ grow_stack (void *addr)
         vme->read_bytes = 0;
         vme->zero_bytes = PGSIZE;
         vme->offset = 0;
-        vme->accessible = true;
         kpage->vme = vme;
 
         success = insert_vme(&thread_current()->vm, vme);
@@ -745,7 +742,6 @@ handle_mm_fault (struct vm_entry *vme)
 
   if(have_lock)
     lock_release(&filesys_lock);   
-  vme->accessible = true;
   success = true;
 
   done:

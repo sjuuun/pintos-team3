@@ -130,6 +130,5 @@ load_file (void *kaddr, struct vm_entry *vme)
   if (load_bytes != (int32_t) vme->read_bytes)
     return false;
   memset(kaddr + load_bytes, 0, vme->zero_bytes);
-  vme->accessible = true;
   return true;
 }

@@ -47,7 +47,6 @@ struct vm_entry
   struct list_elem mmap_elem;		/* list_elem in mmap_file */
 
   /* Swap */
-  bool accessible;			/* Check page is in memory */
   uint32_t swap_slot;			/* Location in swap area */
 };
 

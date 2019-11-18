@@ -295,19 +295,21 @@ munmap (mapid_t mapid)
   struct thread *cur = thread_current();
   struct list *m_list = &cur->mmap_list;
   struct list_elem *e, *e_next;
-  if (!list_empty(m_list)) e = list_front(m_list);
-  while(!list_empty(m_list)) {
-    e_next = list_next(e);
-    struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
-    if (m_file == NULL) break;
-    if (m_file->mapid == mapid || mapid == EXIT) {
-      do_munmap(m_file);
-      list_remove(&m_file->mf_elem);
-      file_close(m_file->file);
-      free(m_file);
-      if (mapid != EXIT) break;
+  if (!list_empty(m_list)) {
+    e = list_front(m_list);
+    while(!list_empty(m_list)) {
+      e_next = list_next(e);
+      struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
+      /* If matched, do munmap */
+      if (m_file->mapid == mapid || mapid == EXIT) {
+        do_munmap(m_file);
+        list_remove(&m_file->mf_elem);
+        file_close(m_file->file);
+        free(m_file);
+        if (mapid != EXIT) break;
+      }
+      e = e_next;
     }
-    e = e_next;
   }
 }
 

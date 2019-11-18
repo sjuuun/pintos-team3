@@ -50,7 +50,8 @@ find_vme (void *vaddr)
   if (!list_empty(&cur->mmap_list)) {
     struct list_elem *e; 
     for(e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list);
-                                e = list_next(e)) {
+                                e = list_next(e))
+    {
       struct mmap_file *mmf = list_entry(e, struct mmap_file, mf_elem);
       struct list_elem *v;
       for(v = list_begin(&mmf->vme_list); v != list_end(&mmf->vme_list);
@@ -97,7 +98,7 @@ vm_hash_func (const struct hash_elem *e, void *aux UNUSED)
 /* Compare address values of two entered hash_elem.
    Return true if address of a is less then address of b.  */
 static bool
-vm_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED)
+vm_less_func (struct hash_elem *a, struct hash_elem *b, void *aux UNUSED)
 {
   struct vm_entry *vma;
   struct vm_entry *vmb;
@@ -122,9 +123,6 @@ vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
 bool
 load_file (void *kaddr, struct vm_entry *vme)
 {
-  /* TODO: Use file_read_at()
-	   Return file_read_at status
-	   Pad 0 as much as zero bytes */
   int32_t load_bytes;
   load_bytes = file_read_at(vme->file, kaddr, vme->read_bytes, vme->offset);
   if (load_bytes != (int32_t) vme->read_bytes)

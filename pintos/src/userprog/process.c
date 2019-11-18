@@ -238,25 +238,24 @@ process_exit (void)
   uint32_t *pd;
   int i;
   
-  /* Todo : add vm_entry delete function */
+  /* Delete vm_entry and unmap mapped files. */
   vm_destroy(&cur->vm);
-  /* unmap mapped files */
   munmap(EXIT);
    
   for (i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {
       file_close(cur->fdt[i]);
-      //do_munmap(cur->fdt[i]);
       cur->fdt[i] = NULL;
     }
   }
   file_close(cur->running_file);
+
+  /* Find physical page element and remove. */
   struct list_elem *e;
   for(e = list_begin(&lru_list); e != list_end(&lru_list); e = list_next(e)) {
     struct page *page = list_entry(e, struct page, elem);
     if(thread_current() == page->thread) {
       list_remove(e);
-      //free(page);
     }
   }
 
@@ -623,7 +622,6 @@ setup_stack (void **esp)
 {
   struct page *kpage;
   bool success = false;
-
   
   kpage = get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
@@ -697,16 +695,20 @@ handle_mm_fault (struct vm_entry *vme)
   struct page *kpage;
   bool success = false;
   bool have_lock = false;
+
   kpage = get_page (PAL_ZERO | PAL_USER);
   kpage->vme = vme;
   if (kpage == NULL)
     return success;
+
+  /* Acquire filesys_lock for synch. */
   if (!lock_held_by_current_thread(&filesys_lock))
-    have_lock = lock_try_acquire(&filesys_lock); 
+    have_lock = lock_try_acquire(&filesys_lock);
+
   /* check vp_type */
   switch(vme->vp_type) {
     case VP_ELF:
-      if (!load_file(kpage->paddr, vme))		/* load file */
+      if (!load_file(kpage->paddr, vme))
         goto done;
       break;
 
@@ -722,6 +724,7 @@ handle_mm_fault (struct vm_entry *vme)
     default:
       goto done;
   }
+
   /* Setup page table */
   if (!install_page(vme->vaddr, kpage->paddr, vme->writable))
     goto done;

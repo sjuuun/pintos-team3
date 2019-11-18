@@ -593,16 +593,12 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           return false; 
         }
       */
-      /* For VM; delete (allocating and mapping physical page part) */
+ 
+      /* Allocate vm_entry and initialize (Virtual Memory) */
 
-      /* Todo : 
-		* Create vm entry (use malloc) 
-		* Setting vm_entry members, offset & size of file to read
-		  when vpage is required, zero byte to pad at the end, ..
-		* Add vm_entry to hash table by insert_vme()		*/
       struct vm_entry *vme = malloc(sizeof(struct vm_entry));
       vme->writable = writable;
-      vme->vp_type = VP_ELF;			// ??
+      vme->vp_type = VP_ELF;
       vme->vaddr = upage;
       vme->file = file;
       vme->read_bytes = page_read_bytes;
@@ -635,10 +631,6 @@ setup_stack (void **esp)
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->paddr, true);
       if (success) {
         *esp = PHYS_BASE;
-        /* TODO : 
-	    * Create vm_entry
-	    * Set up vm_entry members
-	    * Using insert_vme(), add vm_entry to hash table */
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
         vme->vaddr = PHYS_BASE - PGSIZE;
         vme->writable = true;
@@ -679,7 +671,7 @@ grow_stack (void *addr)
       success = install_page ((void *)gaddr, kpage->paddr, true);
       if (success) {
         struct vm_entry *vme = malloc (sizeof(struct vm_entry));
-        vme->vaddr = gaddr;
+        vme->vaddr = (void *) gaddr;
         vme->writable = true;
         vme->vp_type = VP_SWAP;
         vme->file = NULL;
@@ -728,7 +720,6 @@ handle_mm_fault (struct vm_entry *vme)
       break;
 
     default:
-      // expand stack ? 
       goto done;
   }
   /* Setup page table */

@@ -44,6 +44,7 @@ get_page (enum palloc_flags flag)
   struct page *page = malloc(sizeof(struct page));
   page->paddr = addr;
   page->thread = thread_current();
+  page->pin = PAGE_NOT_IN_USE;
   list_push_back(&lru_list, &page->elem);
   return page;
 }
@@ -90,6 +91,8 @@ get_victim (void)
       pagedir_set_accessed(pd, vpage, false);
     }
     else {
+      if (victim->pin == PAGE_IN_USE) 
+        continue;
       list_remove(e);
       return victim;
     }
@@ -174,4 +177,20 @@ swap_out (void)
   palloc_free_page(victim->paddr);
   pagedir_clear_page(victim->thread->pagedir, vaddr);
   free(victim);
+}
+
+/* Set input virtual address's matching physical page's pin flags 
+   to pin_flags (PAGE_IN_USE / PAGE_NOT_IN_USE). */
+void
+set_page_pflags(void *vaddr, enum pin_flags pin_flags)
+{
+  struct list_elem *e;
+  struct page *page = NULL;
+  void *addr = pagedir_get_page(thread_current()->pagedir, vaddr);
+  for (e = list_front(&lru_list); e != list_end(&lru_list); e = list_next(e)){
+    page = list_entry (e, struct page, elem);
+    if (page->paddr == addr) {
+      page->pin = pin_flags;
+    }
+  }
 }

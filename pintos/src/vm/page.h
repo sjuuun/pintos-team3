@@ -13,6 +13,7 @@
 /* List of page in physical memory */
 struct list lru_list;
 
+/* vm_entry's type */
 enum vpage_type
   {
      VP_ELF,
@@ -20,7 +21,14 @@ enum vpage_type
      VP_SWAP
   };
 
+/* page's pin flags to avoid select victim page which is in use */
+enum pin_flags
+{
+  PAGE_IN_USE = 1,
+  PAGE_NOT_IN_USE = 0
+};
 
+/* Memory mapped file's structure */
 struct mmap_file
 {
   int mapid;				/* mapping id */
@@ -57,6 +65,7 @@ struct page
   struct thread *thread;		/* Thread own this page */
   struct vm_entry *vme;			/* Related vm_entry */
   struct list_elem elem;		/* list_elem in lru_list */
+  enum pin_flags pin;			/* page is in use or not */
 };
 
 void vm_init (struct hash *);

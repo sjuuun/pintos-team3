@@ -167,7 +167,6 @@ read (int fd, void *buffer, unsigned size)
   /* Use uint8_t input_getc(void) for fd = 0, otherwise
      use off_t file_read(struct file *file, void *buffer, off_t size) */
   lock_acquire(&filesys_lock);
-  //mapid_t mapid = mmap(fd, buffer);
   if (fd == 0)
     return input_getc();
   else
@@ -222,7 +221,7 @@ close (int fd)
 
 /* For Memory-mapped file system */
 
-/* allocate mapid and return it */
+/* Memory map system call. Return allocated mapping id */
 int
 mmap (int fd, void *addr)
 {
@@ -241,7 +240,8 @@ mmap (int fd, void *addr)
   mmf->file = m_file;
   mmf->mapid = fd;  // How allocate mapid for each file ? 
   list_init(&mmf->vme_list);
- 
+  
+  /* Allocate and initialize vm_entry for mmap file */ 
   int i, iter = file_length(m_file) / PGSIZE;
   for(i = 0; i <= iter; i++) {
     struct vm_entry *vme = malloc(sizeof (struct vm_entry));
@@ -264,6 +264,8 @@ mmap (int fd, void *addr)
   return mmf->mapid;
 }
 
+/* Remove and free mmap_file's vm_entry. 
+   if the page is dirty, write to file. */
 void
 do_munmap (struct mmap_file *m_file)
 {
@@ -284,24 +286,28 @@ do_munmap (struct mmap_file *m_file)
   }
 }
 
-/* remove mmap_file and close the file */
+/* remove mmap_file and close the file, free the mmap_file structure. 
+   if mapid is EXIT, do this for entire mmap_list's element in current
+   running threads. */
 void
 munmap (mapid_t mapid)
 {
   struct thread *cur = thread_current();
   struct list *m_list = &cur->mmap_list;
-  struct list_elem *e;
-  if(!list_empty(m_list)) {
-    for(e = list_begin(m_list); e != list_end(m_list); e = list_next(e)) {
-      struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
-      if (m_file == NULL) break;
-      if (m_file->mapid == mapid || mapid == EXIT) {
-        do_munmap(m_file);
-        list_remove(&m_file->mf_elem);
-        file_close(m_file->file);
-        free(m_file);
-      }
+  struct list_elem *e, *e_next;
+  if (!list_empty(m_list)) e = list_front(m_list);
+  while(!list_empty(m_list)) {
+    e_next = list_next(e);
+    struct mmap_file *m_file = list_entry(e, struct mmap_file, mf_elem);
+    if (m_file == NULL) break;
+    if (m_file->mapid == mapid || mapid == EXIT) {
+      do_munmap(m_file);
+      list_remove(&m_file->mf_elem);
+      file_close(m_file->file);
+      free(m_file);
+      if (mapid != EXIT) break;
     }
+    e = e_next;
   }
 }
 
@@ -317,7 +323,7 @@ get_argument (void *esp, int *arg, int count)
   }
 }
 
-/* Actual System call hander call System call */
+/* Actual System call hanlder that call System call */
 static void
 syscall_handler (struct intr_frame *f)
 {
@@ -342,7 +348,9 @@ syscall_handler (struct intr_frame *f)
     case SYS_EXEC:
       get_argument(esp, arg, 1);
       is_valid_char((const char *)arg[0], esp);
+      set_page_pflags((void *)arg[0], PAGE_IN_USE);
       f->eax = exec((const char *)arg[0]);
+      set_page_pflags((void *)arg[0], PAGE_NOT_IN_USE);
       break;
 
     case SYS_WAIT:
@@ -354,18 +362,25 @@ syscall_handler (struct intr_frame *f)
     case SYS_CREATE:
       get_argument(esp, arg, 2);
       is_valid_char((const char *)arg[0], esp);
+      set_page_pflags((void *)arg[0], PAGE_IN_USE);
       f->eax = create((const char *)arg[0], (unsigned)arg[1]);
+      set_page_pflags((void *)arg[0], PAGE_NOT_IN_USE);
       break;
 
     case SYS_REMOVE:
       get_argument(esp, arg, 1);
+      is_valid_char((const char *)arg[0], esp);
+      set_page_pflags((void *)arg[0], PAGE_IN_USE);
       f->eax = remove((const char *)arg[0]);
+      set_page_pflags((void *)arg[0], PAGE_NOT_IN_USE);
       break;
 
     case SYS_OPEN:
       get_argument(esp, arg, 1);
       is_valid_char((const char *)arg[0], esp);
+      set_page_pflags((void *)arg[0], PAGE_IN_USE);
       f->eax = open((const char *)arg[0]);
+      set_page_pflags((void *)arg[0], PAGE_NOT_IN_USE);
       lock_release(&filesys_lock);
       break;
 
@@ -377,14 +392,18 @@ syscall_handler (struct intr_frame *f)
     case SYS_READ:
       get_argument(esp, arg, 3);
       is_valid_buffer((void *)arg[1], (unsigned)arg[2], esp);
+      set_page_pflags((void *)arg[0], PAGE_IN_USE);
       f->eax = read((int)arg[0], (void *)arg[1], (unsigned)arg[2]);
+      set_page_pflags((void *)arg[0], PAGE_NOT_IN_USE);
       lock_release(&filesys_lock);
       break;
 
     case SYS_WRITE:
       get_argument(esp, arg, 3);
       is_valid_char((const char *)arg[1], esp);
+      set_page_pflags((void *)arg[0], PAGE_IN_USE);
       f->eax = write((int)arg[0], (const void *)arg[1], (unsigned)arg[2]);
+      set_page_pflags((void *)arg[0], PAGE_NOT_IN_USE);
       lock_release(&filesys_lock);
       break;
 

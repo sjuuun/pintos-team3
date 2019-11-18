@@ -16,5 +16,5 @@ void free_page (void *);
 void swap_init (void);
 void swap_in (struct vm_entry *, void *);
 void swap_out (void);
-
+void set_page_pflags(void *, enum pin_flags);
 #endif

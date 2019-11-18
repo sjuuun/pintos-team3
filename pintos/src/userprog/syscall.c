@@ -19,21 +19,20 @@
 
 /* function prototypes */
 static void syscall_handler (struct intr_frame *);
-//static void do_munmap(struct mmap_file *);
-/* Check if input is user address */
+
+/* Check if input is user address. Return corresponding vm_entry */
 static struct vm_entry *
 is_user_address (void *addr)
 {
   if ( !(((uint32_t) addr >= 0x8048000) && ((uint32_t)addr <= 0xbffffffb)) )
     exit(-1);
   
-  /* Find corresponding vm_entry*/
   return find_vme(addr);
 }
 
 /* Check validation of buffer in read system call. */
 static void
-is_valid_buffer (void *buffer, unsigned size, void *esp) //, bool to_write)
+is_valid_buffer (void *buffer, unsigned size, void *esp)
 {
   unsigned i;
   unsigned tmp = pg_no(buffer);
@@ -64,6 +63,7 @@ is_valid_char (const char *str, void *esp)
   }
 }
 
+/* Initialize syscall_handler and filesys_lock */
 void
 syscall_init (void) 
 {
@@ -156,16 +156,13 @@ open (const char *file)
 int
 filesize(int fd)
 {
-  /* Return the size, in bytes, of the file open as fd
-     Use off_t file_length(struct file *file) */
+  /* Return the size, in bytes, of the file open as fd */
   return (int) file_length(thread_current()->fdt[fd]);
 }
 
 int
 read (int fd, void *buffer, unsigned size)
 {
-  /* Use uint8_t input_getc(void) for fd = 0, otherwise
-     use off_t file_read(struct file *file, void *buffer, off_t size) */
   lock_acquire(&filesys_lock);
   if (fd == 0)
     return input_getc();
@@ -176,39 +173,32 @@ read (int fd, void *buffer, unsigned size)
 int
 write (int fd, const void *buffer, unsigned size)
 {
-  /* Use void putbuf(const char *buffer, size_t n) for fd = 1, otherwise
-     use off_t file_write(struct file *file, const void *buffer, off_t size) */
-  lock_acquire(&filesys_lock);
-  
+  lock_acquire(&filesys_lock); 
   if (fd == 1) {
     putbuf((char *)buffer, size);
     return size;
   }
-  else {
+  else
     return file_write(thread_current()->fdt[fd], (char *)buffer, size);
-  }
 }
 
 void
 seek (int fd, unsigned position)
 {
-  /* Changes the next byte to be read or written in open file fd to position
-     Use void file_seek(struct file *file, off_t new_pos */
+  /* Change the next byte to be read or written in open file fd to position */
   return file_seek(thread_current()->fdt[fd], position);
 }
 
 unsigned
 tell (int fd)
 {
-  /* Return the position of next byte to be read or written in open file fd
-     Use off_t file_tell(struct file *file) */
+  /* Return the position of next byte to be read or written in open file fd */
   return file_tell(thread_current()->fdt[fd]);
 }
 
 void
 close (int fd)
 {
-  /* Use void file_close(struct file *file) */
   lock_acquire(&filesys_lock);
   struct thread *cur = thread_current();
   if (cur->fdt[fd] != NULL) {
@@ -236,9 +226,10 @@ mmap (int fd, void *addr)
   if(m_file == NULL || file_length(m_file) == 0)
     return -1;
 
+  /* Allocate mmap_file structure and initialize it */
   struct mmap_file *mmf = malloc(sizeof (struct mmap_file));
   mmf->file = m_file;
-  mmf->mapid = fd;  // How allocate mapid for each file ? 
+  mmf->mapid = fd;
   list_init(&mmf->vme_list);
   
   /* Allocate and initialize vm_entry for mmap file */ 
@@ -286,7 +277,7 @@ do_munmap (struct mmap_file *m_file)
   }
 }
 
-/* remove mmap_file and close the file, free the mmap_file structure. 
+/* Remove mmap_file and close the file, free the mmap_file structure. 
    if mapid is EXIT, do this for entire mmap_list's element in current
    running threads. */
 void

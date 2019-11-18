@@ -98,7 +98,8 @@ vm_hash_func (const struct hash_elem *e, void *aux UNUSED)
 /* Compare address values of two entered hash_elem.
    Return true if address of a is less then address of b.  */
 static bool
-vm_less_func (struct hash_elem *a, struct hash_elem *b, void *aux UNUSED)
+vm_less_func (const struct hash_elem *a, const struct hash_elem *b, 
+							void *aux UNUSED)
 {
   struct vm_entry *vma;
   struct vm_entry *vmb;

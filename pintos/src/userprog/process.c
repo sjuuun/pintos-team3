@@ -22,10 +22,10 @@
 #include "vm/page.h"
 #include "vm/swap.h"
 
+/* Prototypes */
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 void argument_stack (char **, int, void **);
-
 
 /* Set-up stack for starting user process. Push arguments,
    push argc and argv, and push the address of the next
@@ -241,7 +241,8 @@ process_exit (void)
   /* Delete vm_entry and unmap mapped files. */
   vm_destroy(&cur->vm);
   munmap(EXIT);
-   
+  
+  /* close all files opened by current process */
   for (i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {
       file_close(cur->fdt[i]);
@@ -293,6 +294,7 @@ process_activate (void)
   tss_update ();
 }
 
+/* Return file pointer of current process's input file descriptor */
 struct file *
 process_get_file (int fd)
 {
@@ -623,11 +625,13 @@ setup_stack (void **esp)
   struct page *kpage;
   bool success = false;
   
+  /* Allocate page and install it */
   kpage = get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->paddr, true);
-      if (success) {
+      if (success) 
+      {
         *esp = PHYS_BASE;
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
         vme->vaddr = PHYS_BASE - PGSIZE;
@@ -701,11 +705,11 @@ handle_mm_fault (struct vm_entry *vme)
   if (kpage == NULL)
     return success;
 
-  /* Acquire filesys_lock for synch. */
+  /* Acquire filesys_lock for synch. Check if current process already have */
   if (!lock_held_by_current_thread(&filesys_lock))
     have_lock = lock_try_acquire(&filesys_lock);
 
-  /* check vp_type */
+  /* check vm_entry type */
   switch(vme->vp_type) {
     case VP_ELF:
       if (!load_file(kpage->paddr, vme))
@@ -728,12 +732,13 @@ handle_mm_fault (struct vm_entry *vme)
   /* Setup page table */
   if (!install_page(vme->vaddr, kpage->paddr, vme->writable))
     goto done;
-  /* Check VP_ELF is swapped */
+  /* Check if VP_ELF is swapped */
   if ((vme->vp_type == VP_SWAP) && (vme->file != NULL)) {
     vme->vp_type = VP_ELF;
     pagedir_set_dirty (thread_current()->pagedir, vme->vaddr, true);
   }
 
+  /* Release lock */
   if(have_lock)
     lock_release(&filesys_lock);   
   success = true;

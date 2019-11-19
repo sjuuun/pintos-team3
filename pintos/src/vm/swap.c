@@ -77,7 +77,8 @@ free_page (void *addr)
 /* Return the victim page to be swapped out. scan the LRU list, check each 
    element's page directory is accessed. If accessed, set it's accessed bit 
    to 0 and move on to the next element. If not accessed, remove it from 
-   LRU list and return it. */
+   LRU list and return it. (Use Clock algorithm) 
+   If selected victim page's pin flag is PAGE_IN_USE, find another victim. */
 static struct page*
 get_victim (void)
 { 
@@ -100,7 +101,8 @@ get_victim (void)
   return victim;
 }
 
-/* Initialize swap table - use bitmap. If failed, exit(-1) */
+/* Initialize swap table - use bitmap data structure defined in lib/kernel 
+   If failed, exit(-1) */
 void
 swap_init (void)
 {
@@ -141,13 +143,20 @@ swap_in (struct vm_entry *vme, void *kaddr)
   vme->swap_slot = 0;
 }
 
-/* Swap out the page from memory to swap area. Behave different from victim
-   page's vm_entry type. Finally, free the victim page. */
+/* Swap out the page from memory to swap area. It is called by get_page, when
+   available page doesn't exist. Behave differently according to victim page's
+   vm_entry type. Finally, free the victim page. 
+   - If vm_entry's type is VP_ELF, check dirty bit and call swap_write and 
+   change vm_entry type to VP_SWAP. If it's not dirty, no need to write to
+   swap area. 
+   - If vm_entry's type is VP_FILE, check dirty bit and if it is dirty, write
+   back to file. 
+   - If vm_entry's type is VP_SWAP, call swap_write to write to swap_area. */
 void
 swap_out (void)
 {
-  /* Choose victim and say goodbye */
   ASSERT (!list_empty(&lru_list));
+  /* Pick victim page */
   struct page *victim = get_victim();
   struct vm_entry *vme = victim->vme;
   void *vaddr = vme->vaddr;
@@ -173,14 +182,15 @@ swap_out (void)
       exit(-1);
   }
   
-  /* Free victim */
+  /* Free victim page*/
   palloc_free_page(victim->paddr);
   pagedir_clear_page(victim->thread->pagedir, vaddr);
   free(victim);
 }
 
 /* Set input virtual address's matching physical page's pin flags 
-   to pin_flags (PAGE_IN_USE / PAGE_NOT_IN_USE). */
+   to pin_flags (PAGE_IN_USE / PAGE_NOT_IN_USE). 
+   Called before and after system calls */
 void
 set_page_pflags(void *vaddr, enum pin_flags pin_flags)
 {

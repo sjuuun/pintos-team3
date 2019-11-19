@@ -165,13 +165,17 @@ page_fault (struct intr_frame *f)
           write ? "writing" : "reading",
           user ? "user" : "kernel");
   kill (f);*/
+
   bool success = false;
   if (is_user_vaddr(fault_addr)) {
     struct vm_entry *vme = find_vme(fault_addr);
+    /* If there exist vm_entry about faulted address, call handle_mm_fault
+       to allocate and setup physical page. */
     if (vme != NULL)
       success = handle_mm_fault(vme);
     else {
-      /* Check stack growth */
+      /* Check faulted address is larger than esp - 32,
+         because, maximum increase of esp is 32. (PUSHA instruction) */
       uint32_t valid = ((uint32_t)f->esp) - 32;
       if ((uint32_t)fault_addr >= valid) {
         success = grow_stack(fault_addr);
@@ -179,5 +183,5 @@ page_fault (struct intr_frame *f)
     }
   }
   if (!success) 
-    kill(f);
+    exit(-1);
 }

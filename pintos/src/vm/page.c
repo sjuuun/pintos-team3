@@ -36,7 +36,8 @@ find_vme (void *vaddr)
 {
   uint32_t vpn;
   struct hash_iterator iter;
-
+ 
+  /* Iterate on thread's vm hash table to find matching vm_entry */
   vpn = pg_no(vaddr);
   hash_first (&iter, &thread_current()->vm);
   while (hash_next (&iter)) {
@@ -47,6 +48,8 @@ find_vme (void *vaddr)
   }
 
   struct thread *cur = thread_current();
+
+  /* Iterate on thread's mmap_list to find matching vm entry */
   if (!list_empty(&cur->mmap_list)) {
     struct list_elem *e; 
     for(e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list);
@@ -62,6 +65,7 @@ find_vme (void *vaddr)
       }
     }
   }
+  /* If no matching vm_entry exist, Return NULL */
   return NULL;
 }
 
@@ -120,7 +124,8 @@ vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
   free(vme);
 }
 
-/* load a page to kaddr by <file, offset> of vme */
+/* load a data to kaddr by <file, offset> of vme. pad zero by zero bytes 
+   If success, return true */
 bool
 load_file (void *kaddr, struct vm_entry *vme)
 {

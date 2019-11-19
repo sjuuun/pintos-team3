@@ -30,7 +30,9 @@ is_user_address (void *addr)
   return find_vme(addr);
 }
 
-/* Check validation of buffer in read system call. */
+/* Check validation whole buffer address in read system call.
+   If it is valid address but no matching vm_entry exist,
+   compare with esp and call grow_stack() or exit(-1). */
 static void
 is_valid_buffer (void *buffer, unsigned size, void *esp)
 {
@@ -50,7 +52,9 @@ is_valid_buffer (void *buffer, unsigned size, void *esp)
   }
 }
 
-/* Check validation of char * in exec, create, open, write system call. */
+/* Check validation of char * in exec, create, open, write system call.
+   Also, if it is valid address but no matching vm_entry exist,
+   compare with esp and call grow_stack() or exit(-1). */
 static void
 is_valid_char (const char *str, void *esp)
 {
@@ -251,11 +255,12 @@ mmap (int fd, void *addr)
     vme->writable = true;
     list_push_front(&mmf->vme_list, &vme->mmap_elem);
   }
+  /* Insert mmap_file in thread's mmap_list */
   list_push_front(&thread_current()->mmap_list, &mmf->mf_elem);
   return mmf->mapid;
 }
 
-/* Remove and free mmap_file's vm_entry. 
+/* Remove and free input mmap_file's vm_entries. 
    if the page is dirty, write to file. */
 void
 do_munmap (struct mmap_file *m_file)
@@ -304,7 +309,7 @@ munmap (mapid_t mapid)
   }
 }
 
-/* Get argument from esp. */
+/* Check valid address of esp, and store argument in arg. */
 static void
 get_argument (void *esp, int *arg, int count)
 {

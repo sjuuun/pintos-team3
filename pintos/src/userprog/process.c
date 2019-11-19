@@ -596,7 +596,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       */
  
       /* Allocate vm_entry and initialize (Virtual Memory) */
-
       struct vm_entry *vme = malloc(sizeof(struct vm_entry));
       vme->writable = writable;
       vme->vp_type = VP_ELF;
@@ -629,9 +628,11 @@ setup_stack (void **esp)
   kpage = get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->paddr, true);
+      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, 
+				kpage->paddr, true);
       if (success) 
       {
+        /* Initialize vm_entry for top of stack. */
         *esp = PHYS_BASE;
         struct vm_entry *vme = malloc(sizeof(struct vm_entry));
         vme->vaddr = PHYS_BASE - PGSIZE;
@@ -655,14 +656,18 @@ setup_stack (void **esp)
 }
 
 
-/* Grow Stack */
+/* Grow stack by mapping a zeroed page at the addr.
+   It is called by page_fault(), is_valid_buffer(), or is_valid_str().
+   For page_fault(), if finding vme at faulted address failed, check stack
+   growth condition and call this function. And same in is_valid_buffer()
+   and is_valid_str() in userprog/syscall.c */
 bool
 grow_stack (void *addr)
 {
   struct page *kpage;
   bool success = false;
 
-  /* Check esp limit */
+  /* Check esp limit. Maximum size of stack is 8MB. */
   uint32_t gaddr = (uint32_t)pg_no(addr) << PGBITS;
   if (gaddr < ((uint32_t)PHYS_BASE - (1 << 23)) )
     return success;
@@ -672,6 +677,7 @@ grow_stack (void *addr)
     {
       success = install_page ((void *)gaddr, kpage->paddr, true);
       if (success) {
+        /* Initialize vm_entry for growed stack */
         struct vm_entry *vme = malloc (sizeof(struct vm_entry));
         vme->vaddr = (void *) gaddr;
         vme->writable = true;
@@ -692,7 +698,12 @@ grow_stack (void *addr)
   return success;
 }
 
-/* page fault handler */
+/* Page fault handler. It is called by page_fault(), when there exist
+   vm_entry but PTE doesn't exist. So, this function allocate physical
+   page for vm_entry and install that page.
+   For ELF type vm_entry and FILE type vm_entry, call load_file() to load
+   data from file. For SWAP type vm_entry, call swap_in() to load data
+   from swapped page. */
 bool
 handle_mm_fault (struct vm_entry *vme)          
 {
@@ -709,7 +720,7 @@ handle_mm_fault (struct vm_entry *vme)
   if (!lock_held_by_current_thread(&filesys_lock))
     have_lock = lock_try_acquire(&filesys_lock);
 
-  /* check vm_entry type */
+  /* Check vm_entry type */
   switch(vme->vp_type) {
     case VP_ELF:
       if (!load_file(kpage->paddr, vme))
@@ -732,7 +743,8 @@ handle_mm_fault (struct vm_entry *vme)
   /* Setup page table */
   if (!install_page(vme->vaddr, kpage->paddr, vme->writable))
     goto done;
-  /* Check if VP_ELF is swapped */
+  /* If VP_ELF is swapped, set vm_entry type to VP_ELF, and set page's dirty 
+     bit to true because for VP_ELF, only dirty page is swapped in. */
   if ((vme->vp_type == VP_SWAP) && (vme->file != NULL)) {
     vme->vp_type = VP_ELF;
     pagedir_set_dirty (thread_current()->pagedir, vme->vaddr, true);

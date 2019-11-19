@@ -4,6 +4,7 @@
 
 #include "vm/page.h"
 
+/* Used for munmap in process_exit */
 #define EXIT -1
 
 typedef int pid_t;

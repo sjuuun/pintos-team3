@@ -298,7 +298,7 @@ process_activate (void)
 struct file *
 process_get_file (int fd)
 {
-  if (fd > 64 || fd < 0) 
+  if (fd > 63 || fd < 2) 
     return NULL;
   return thread_current()->fdt[fd];
 }

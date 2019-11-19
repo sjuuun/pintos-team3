@@ -176,11 +176,8 @@ page_fault (struct intr_frame *f)
       if ((uint32_t)fault_addr >= valid) {
         success = grow_stack(fault_addr);
       }
-      else {
-        exit(-1);
-      }
     }
   }
   if (!success) 
-    exit(-1);
+    kill(f);
 }

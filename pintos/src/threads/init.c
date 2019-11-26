@@ -28,6 +28,7 @@
 #include "userprog/gdt.h"
 #include "userprog/syscall.h"
 #include "userprog/tss.h"
+#include "vm/swap.h"
 #else
 #include "tests/threads/tests.h"
 #endif
@@ -99,6 +100,11 @@ main (void)
   malloc_init ();
   paging_init ();
 
+  /* Initialize physical memory system. */
+#ifdef USERPROG
+  lru_init();
+#endif
+
   /* Segmentation. */
 #ifdef USERPROG
   tss_init ();
@@ -124,6 +130,7 @@ main (void)
   /* Initialize file system. */
   ide_init ();
   locate_block_devices ();
+  swap_init();
   filesys_init (format_filesys);
 #endif
 

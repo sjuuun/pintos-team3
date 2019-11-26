@@ -224,7 +224,7 @@ thread_create (const char *name, int priority,
   /* Initialize next_fd for FDT */
   t->next_fd = 2;
 #endif
-
+  
   /* Add to run queue. */
   thread_unblock (t);
 
@@ -516,7 +516,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->parent = NULL;
   list_init(&t->child_list);
 #endif
-
+  /* For mmap */
+  list_init(&t->mmap_list);
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
 }

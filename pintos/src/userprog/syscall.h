@@ -1,13 +1,19 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
 
-void syscall_init (void);
+
+#include "vm/page.h"
+
+/* Used for munmap in process_exit */
+#define EXIT -1
 
 typedef int pid_t;
+typedef int mapid_t;
 
 struct lock filesys_lock;
 
-bool is_user_address(void *);
+void syscall_init (void);
+
 void halt(void);
 void exit(int);
 pid_t exec(const char *);
@@ -22,5 +28,8 @@ void seek(int, unsigned);
 unsigned tell(int);
 void close(int);
 
+int mmap(int, void*);
+void do_munmap(struct mmap_file *);
+void munmap(int);
 
 #endif /* userprog/syscall.h */

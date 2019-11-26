@@ -10,9 +10,6 @@
 #include "lib/stddef.h"
 #include "filesys/file.h"
 
-/* List of page in physical memory */
-struct list lru_list;
-
 /* vm_entry's type */
 enum vpage_type
   {

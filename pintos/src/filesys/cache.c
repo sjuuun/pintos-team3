@@ -1,7 +1,9 @@
 #include "filesys/cache.h"
-#include "device/block.h"
+#include "filesys/filesys.h"
+#include "devices/block.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
+#include "lib/string.h"
 
 #define CACHE_SECTOR_NUMBER 64
 
@@ -51,39 +53,38 @@ get_cache_entry(void)
   return -1;
 }
 
-bool
-bc_read(block_sector_t sector, void *buffer, off_t read_bytes, 
+void
+bc_read(block_sector_t sector, void *buffer, //off_t read_bytes, 
         int chunk_size, int sector_ofs)
 {
-  struct block *block = block_get_role(BLOCK_FILESYS);
   int index = bc_lookup(sector);
   if (index == -1) {
     index = get_cache_entry();
     if (index == -1) {
       index = bc_select_victim(); 
     }
-    block_read(block, sector, buffer_cache[index].cache_addr);
+    block_read(fs_device, sector, buffer_cache[index].cache_addr);
     buffer_cache[index].sector = sector;
-    buffer_cache[index].empty = false;
+    buffer_cache[index].isempty = false;
   }
-  memcpy(buffer, buffer_cache[index].cache_addr, read_bytes);
+  uint8_t *c_addr = buffer_cache[index].cache_addr;
+  memcpy(buffer, c_addr + sector_ofs, chunk_size);
   buffer_cache[index].clock = 1;
 }
 
-bool
+void
 bc_write(block_sector_t sector, void *buffer, off_t write_bytes,
          int chunk_size, int sector_ofs)
 {
-  struct block *block = block_get_role(BLOCK_FILESYS);
   int index = bc_lookup(sector);
   if (index == -1) {
     index = get_cache_entry();
     if (index == -1) {
       index = bc_select_victim();
     }
-    block_read(block, sector, buffer_cache[index].cache_addr);
+    block_read(fs_device, sector, buffer_cache[index].cache_addr);
     buffer_cache[index].sector = sector;
-    buffer_cache[index].empty = false;
+    buffer_cache[index].isempty = false;
   }
   memcpy(buffer_cache[index].cache_addr, buffer, write_bytes);
   buffer_cache[index].isdirty = true;
@@ -106,7 +107,7 @@ bc_lookup(block_sector_t sector)
 
 /* */
 int
-bc_select_victin (void)
+bc_select_victim (void)
 {
   int i;
   for (i=0; i < CACHE_SECTOR_NUMBER; i++) {
@@ -120,6 +121,7 @@ bc_select_victin (void)
       buffer_cache[i].clock = 0;
     }
   }
+  return -1;
 }
 
 /* */

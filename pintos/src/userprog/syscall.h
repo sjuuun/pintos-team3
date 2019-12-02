@@ -3,6 +3,7 @@
 
 
 #include "vm/page.h"
+#include "threads/synch.h"
 
 /* Used for munmap in process_exit */
 #define EXIT -1

@@ -1,9 +1,9 @@
 #include "filesys/cache.h"
-#include "filesys/filesys.h"
 #include "devices/block.h"
+#include "filesys/filesys.h"
+#include "lib/string.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
-#include "lib/string.h"
 
 #define CACHE_SECTOR_NUMBER 64
 
@@ -20,11 +20,11 @@ bc_init(void)
     if (caddr == NULL) {
       exit(-1);
     }
-    buffer_cache[i].cache_addr = caddr;
     buffer_cache[i].isempty = true;
     buffer_cache[i].isdirty = false;
-    buffer_cache[i].inode = NULL;
-    buffer_cache[i].clock = 0;
+    buffer_cache[i].clock = false;
+    buffer_cache[i].cache_addr = caddr;
+    buffer_cache[i].sector = 0;
   }
 }
 
@@ -33,11 +33,10 @@ bc_init(void)
 void
 bc_exit(void)
 {
+  bc_flush_all();
+
   int i;
   for(i=0; i < CACHE_SECTOR_NUMBER; i++){
-    if (buffer_cache[i].isdirty == true) {
-      bc_flush_entry(i);
-    }
     free(buffer_cache[i].cache_addr); 
   }
 }
@@ -51,44 +50,6 @@ get_cache_entry(void)
       return i;
   }
   return -1;
-}
-
-void
-bc_read(block_sector_t sector, void *buffer, //off_t read_bytes, 
-        int chunk_size, int sector_ofs)
-{
-  int index = bc_lookup(sector);
-  if (index == -1) {
-    index = get_cache_entry();
-    if (index == -1) {
-      index = bc_select_victim(); 
-    }
-    block_read(fs_device, sector, buffer_cache[index].cache_addr);
-    buffer_cache[index].sector = sector;
-    buffer_cache[index].isempty = false;
-  }
-  uint8_t *c_addr = buffer_cache[index].cache_addr;
-  memcpy(buffer, c_addr + sector_ofs, chunk_size);
-  buffer_cache[index].clock = 1;
-}
-
-void
-bc_write(block_sector_t sector, void *buffer, off_t write_bytes,
-         int chunk_size, int sector_ofs)
-{
-  int index = bc_lookup(sector);
-  if (index == -1) {
-    index = get_cache_entry();
-    if (index == -1) {
-      index = bc_select_victim();
-    }
-    block_read(fs_device, sector, buffer_cache[index].cache_addr);
-    buffer_cache[index].sector = sector;
-    buffer_cache[index].isempty = false;
-  }
-  memcpy(buffer_cache[index].cache_addr, buffer, write_bytes);
-  buffer_cache[index].isdirty = true;
-  buffer_cache[index].clock = 1;
 }
 
 /* Look up buffer cache and find cache_entry that has sector. If no matching 
@@ -111,27 +72,75 @@ bc_select_victim (void)
 {
   int i;
   for (i=0; i < CACHE_SECTOR_NUMBER; i++) {
-    if (buffer_cache[i].clock == 0) {
+    if (!buffer_cache[i].clock) {
       if (buffer_cache[i].isdirty == true) {
         bc_flush_entry(i);
       }
       return i;
     }
     else {
-      buffer_cache[i].clock = 0;
+      buffer_cache[i].clock = false;
     }
   }
-  return -1;
+  if (buffer_cache[0].isdirty)
+    bc_flush_entry(0);
+  return 0;
 }
 
 /* */
 void
 bc_flush_entry(int index)
 {
-  struct block *block = block_get_role(BLOCK_FILESYS);
   block_sector_t sector = buffer_cache[index].sector;
-  block_write(block, sector, buffer_cache[index].cache_addr);
+  block_write(fs_device, sector, buffer_cache[index].cache_addr);
   buffer_cache[index].isdirty = false;
 }
 
+void
+bc_flush_all(void)
+{
+  int i;
+  for(i=0; i < CACHE_SECTOR_NUMBER; i++){
+    if (buffer_cache[i].isdirty == true) {
+      bc_flush_entry(i);
+    }
+  }
+}
 
+void
+bc_read(block_sector_t sector, void *buffer, int chunk_size, int sector_ofs)
+{
+  int index = bc_lookup(sector);
+  if (index == -1) {
+    index = get_cache_entry();
+    if (index == -1) {
+      index = bc_select_victim(); 
+    }
+    block_read(fs_device, sector, buffer_cache[index].cache_addr);
+    buffer_cache[index].sector = sector;
+    buffer_cache[index].isempty = false;
+  }
+  uint8_t *c_addr = buffer_cache[index].cache_addr;
+  memcpy(buffer, c_addr + sector_ofs, chunk_size);
+  buffer_cache[index].clock = true;
+}
+
+void
+bc_write(block_sector_t sector, const void *buffer, int chunk_size,
+                                                    int sector_ofs)
+{
+  int index = bc_lookup(sector);
+  if (index == -1) {
+    index = get_cache_entry();
+    if (index == -1) {
+      index = bc_select_victim();
+    }
+    block_read(fs_device, sector, buffer_cache[index].cache_addr);
+    buffer_cache[index].sector = sector;
+    buffer_cache[index].isempty = false;
+  }
+  uint8_t *c_addr = buffer_cache[index].cache_addr;
+  memcpy(c_addr + sector_ofs, buffer, chunk_size);
+  buffer_cache[index].isdirty = true;
+  buffer_cache[index].clock = true;
+}

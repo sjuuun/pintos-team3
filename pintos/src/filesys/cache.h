@@ -2,7 +2,6 @@
 #define FILESYS_CACHE_H
 
 #include "devices/block.h"
-#include "filesys/off_t.h"
 #include "filesys/inode.h"
 #include "lib/stdbool.h"
 
@@ -17,13 +16,15 @@ struct cache_entry
   /* lock, clock bit */
 };
 
-void bc_init(void);
-void bc_exit(void);
+void bc_init (void);
+void bc_exit (void);
 
-void bc_read(block_sector_t, void *, int, int);
-void bc_write(block_sector_t, void *, off_t, int, int);
 int bc_lookup (block_sector_t);
 int bc_select_victim (void);
-void bc_flush_entry(int);
+void bc_flush_entry (int);
+void bc_flush_all (void);
+
+void bc_read (block_sector_t, void *, int, int);
+void bc_write (block_sector_t, const void *, int, int);
 
 #endif /* filesys/cache.h */

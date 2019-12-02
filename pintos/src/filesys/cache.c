@@ -55,6 +55,7 @@ bool
 bc_read(block_sector_t sector, void *buffer, off_t read_bytes, 
         int chunk_size, int sector_ofs)
 {
+  struct block *block = block_get_role(BLOCK_FILESYS);
   int index = bc_lookup(sector);
   if (index == -1) {
     index = get_cache_entry();
@@ -66,13 +67,27 @@ bc_read(block_sector_t sector, void *buffer, off_t read_bytes,
     buffer_cache[index].empty = false;
   }
   memcpy(buffer, buffer_cache[index].cache_addr, read_bytes);
-  
+  buffer_cache[index].clock = 1;
 }
 
 bool
-bc_write()
+bc_write(block_sector_t sector, void *buffer, off_t write_bytes,
+         int chunk_size, int sector_ofs)
 {
-
+  struct block *block = block_get_role(BLOCK_FILESYS);
+  int index = bc_lookup(sector);
+  if (index == -1) {
+    index = get_cache_entry();
+    if (index == -1) {
+      index = bc_select_victim();
+    }
+    block_read(block, sector, buffer_cache[index].cache_addr);
+    buffer_cache[index].sector = sector;
+    buffer_cache[index].empty = false;
+  }
+  memcpy(buffer_cache[index].cache_addr, buffer, write_bytes);
+  buffer_cache[index].isdirty = true;
+  buffer_cache[index].clock = 1;
 }
 
 /* Look up buffer cache and find cache_entry that has sector. If no matching 

@@ -15,7 +15,7 @@ struct cache_entry
   block_sector_t sector;  
 
   /* lock, clock bit */
-
+  bool clock;
 };
 
 void bc_init(void);

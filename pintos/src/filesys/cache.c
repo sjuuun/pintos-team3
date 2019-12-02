@@ -17,11 +17,12 @@ bc_init(void)
     void *caddr = malloc(BLOCK_SECTOR_SIZE);
     if (caddr == NULL) {
       exit(-1);
-  }
-  buffer_cache[i].cache_addr = caddr;
-  buffer_cache[i].isempty = true;
-  buffer_cache[i].isdirty = false;
-  buffer_cache[i].inode = NULL;
+    }
+    buffer_cache[i].cache_addr = caddr;
+    buffer_cache[i].isempty = true;
+    buffer_cache[i].isdirty = false;
+    buffer_cache[i].inode = NULL;
+    buffer_cache[i].clock = 0;
   }
 }
 
@@ -39,10 +40,33 @@ bc_exit(void)
   }
 }
 
-bool
-bc_read()
+static int
+get_cache_entry(void)
 {
+  int i;
+  for (i=0; i < CACHE_SECTOR_NUMBER; i++) {
+    if (buffer_cache[i].isempty == true)
+      return i;
+  }
+  return -1;
+}
 
+bool
+bc_read(block_sector_t sector, void *buffer, off_t read_bytes, 
+        int chunk_size, int sector_ofs)
+{
+  int index = bc_lookup(sector);
+  if (index == -1) {
+    index = get_cache_entry();
+    if (index == -1) {
+      index = bc_select_victim(); 
+    }
+    block_read(block, sector, buffer_cache[index].cache_addr);
+    buffer_cache[index].sector = sector;
+    buffer_cache[index].empty = false;
+  }
+  memcpy(buffer, buffer_cache[index].cache_addr, read_bytes);
+  
 }
 
 bool
@@ -50,7 +74,6 @@ bc_write()
 {
 
 }
-
 
 /* Look up buffer cache and find cache_entry that has sector. If no matching 
 	 cache entry exists, return -1. */
@@ -70,8 +93,18 @@ bc_lookup(block_sector_t sector)
 int
 bc_select_victin (void)
 {
-  
-
+  int i;
+  for (i=0; i < CACHE_SECTOR_NUMBER; i++) {
+    if (buffer_cache[i].clock == 0) {
+      if (buffer_cache[i].isdirty == true) {
+        bc_flush_entry(i);
+      }
+      return i;
+    }
+    else {
+      buffer_cache[i].clock = 0;
+    }
+  }
 }
 
 /* */

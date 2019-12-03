@@ -461,11 +461,91 @@ inode_length (const struct inode *inode)
   return inode->data.length;
 }
 
+/* Update new sector number in disk_inode. */
+static bool
+register_sector (struct inode_disk *disk_inode, block_sector_t new_sector)
+{
+  block_sector_t *update = NULL;
+  block_sector_t ind1, ind2, indirect_sector;
+  struct inode_indirect_block *indirect = NULL;
+  size_t i, j;
+
+  /* Iterate to find empty table. */
+  /* Direct access. */
+  for (i = 0; i < DIRECT_BLOCK_ENTRIES; i++) {
+    if (disk_inode->direct_block[i] == 0) {
+      update = &disk_inode->direct_block[i];
+      goto update;
+    }
+  }
+  /* Indirect access. */
+  indirect = malloc(sizeof *indirect);
+  if (indirect == NULL) return false;
+
+  ind1 = disk_inode->indirect_block;
+  if (ind1 == 0) {		// First indirect access
+    block_sector_t new_indirect;
+    if (free_map_allocate(1, &new_indirect)) {
+      static char zeros[BLOCK_SECTOR_SIZE];
+      bc_write (new_indirect, zeros, BLOCK_SECTOR_SIZE, 0);
+      disk_inode->indirect_block = new_indirect;
+      ind1 = new_indirect;
+    }
+    else {
+      free(indirect);
+      return false;
+    }
+  }
+
+  bc_read(ind1, indirect, BLOCK_SECTOR_SIZE, 0);
+  for (i = 0; i < INDIRECT_BLOCK_ENTRIES; i++) {
+    if (indirect->table[i] == 0) {
+      update = &indirect->table[i];
+      indirect_sector = ind1;
+    }
+  }
+
+  /* Double indirect access. */
+  
+
+  update:
+    ASSERT (update != NULL);
+    *update = new_sector;
+    if (indirect != NULL) {
+      bc_write(indirect_sector, indirect, BLOCK_SECTOR_SIZE, 0);
+      free(indirect);
+    }
+    return true;
+}
+
 /* inode extend file length */
 static bool
-inode_extend_file(struct inode_disk *disk_inode, off_t start_pos, off_t end_pos)
+inode_extend_file (struct inode_disk *disk_inode, off_t pos)
 {
+  ASSERT (pos > disk_inode->length);
+  off_t start = (off_t) bytes_to_sectors(disk_inode->length);
+  off_t end = (off_t) bytes_to_sectors(pos);
+  block_sector_t new_sector;
 
+  while (start < end) {
+    if (free_map_allocate (1, &new_sector))
+      {
+        static char zeros[BLOCK_SECTOR_SIZE];
+        bc_write (new_sector, zeros, BLOCK_SECTOR_SIZE, 0);
+
+        /* Register new sector */
+        if (!register_sector(disk_inode, new_sector)) {
+          return false;
+        }
+      }
+    else
+      {
+        return false;
+      }
+    start++;
+  }
+  disk_inode->length = pos;
+  return true;
 }
 
 static void

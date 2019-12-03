@@ -3,6 +3,7 @@
 #include <debug.h>
 #include <round.h>
 #include <string.h>
+#include "devices/block.h"
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
@@ -12,14 +13,14 @@
 #define INODE_MAGIC 0x494e4f44
 
 /* Block number in inode_disk */
-#define DIRECT_BLOCK_ENTRIES 123
+#define DIRECT_BLOCK_ENTRIES 124
 #define INDIRECT_BLOCK_ENTRIES 128
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
   {
-    block_sector_t start;               /* First data sector. */
+    //block_sector_t start;               /* First data sector. */
     off_t length;                       /* File size in bytes. */
     unsigned magic;                     /* Magic number. */
     //uint32_t unused[125];               /* Not used. */
@@ -27,6 +28,12 @@ struct inode_disk
     block_sector_t indirect_block;
     block_sector_t double_indirect_block;
   };
+
+/* Structure of indirect block. */
+struct inode_indirect_block
+  {
+    block_sector_t table[INDIRECT_BLOCK_ENTRIES];
+  }
 
 /* Returns the number of sectors to allocate for an inode SIZE
    bytes long. */
@@ -55,10 +62,49 @@ static block_sector_t
 byte_to_sector (const struct inode *inode, off_t pos) 
 {
   ASSERT (inode != NULL);
+  /*
   if (pos < inode->data.length)
     return inode->data.start + pos / BLOCK_SECTOR_SIZE;
   else
     return -1;
+  */
+
+  off_t pos_sector = pos / BLOCK_SECTOR_SIZE;
+  block_sector_t = result_sec;
+  /* Direct Access */
+  if (pos_sector < DIRECT_BLOCK_ENTRIES)
+  {
+    result_sec = inode->data.direct_block[pos_sector]
+  }
+  /* Indirect Access */
+  else if (pos_sector < (off_t)(DIRECT_BLOCK_ENTRIES + INDIRECT_BLOCK_ENTRIES))
+  {
+    struct inode_indirect_block *indirect = malloc(sizeof inode_indirect_block);
+    bc_read(inode->data.indirect_block, indirect, BLOCK_SECTOR_SIZE, 0);
+    pos_sector -= DIRECT_BLOCK_ENTRIES;
+    result_sec = indirect[pos_sector]
+    free(indirect);
+  }
+  /* Double Indirect Access */
+  else if (pos_sector < (off_t)(DIRECT_BLOCK_ENTRIES +
+			INDIRECT_BLOCK_ENTRIES * (INDIRECT_BLOCK_ENTRIES + 1)))
+  {
+    struct inode_indirect_block *indirect = malloc(sizeof inode_indirect_block);
+    bc_read(inode->data.double_indirect_block, indirect, BLOCK_SECTOR_SIZE, 0);
+    pos_sector -= (DIRECT_BLOCK_ENTRIES + INDIRECT_BLOCK_ENTRIES); 
+    int index_sec = indirect[pos_sector / INDIRECT_BLOCK_ENTRIES];
+
+    bc_read(index_sec, indirect, BLOCK_SECTOR_SIZE, 0);
+    pos_sector %= INDIRECT_BLOCK_ENTRIES;
+    result_sec = indirect[pos_sector];
+    free(indirect);
+  }
+  else
+  {
+    result_sec = 0;
+  }
+
+  return result_sec
 }
 
 /* List of open inodes, so that opening a single inode twice

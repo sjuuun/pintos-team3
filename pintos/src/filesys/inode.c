@@ -471,5 +471,41 @@ inode_extend_file(struct inode_disk *disk_inode, off_t start_pos, off_t end_pos)
 static void
 free_inode_sectors (struct inode_disk *disk_inode)
 {
-
+  /* Free double indirect blocks if exist */ 
+  if(disk_inode->double_indirect_block > 0) {
+    int i = 0;
+    struct inode_indirect_block *ind_block1 = malloc(sizeof *ind_block1);
+    bc_read(disk_inode->double_indirect_block, ind_block, BLOCK_SECTOR_SIZE, 0);
+    while (ind_block1->table[i] > 0) {
+      int j = 0;
+      struct inode_indirect_block *ind_block2 = malloc(sizeof *ind_block2);
+      while (ind_block2->table[j] > 0) {
+        free_map_release(ind_block2->table[j], 1);
+        j++;
+      }
+      free(ind_block2);
+      free_map_release(ind_block1->table[i], 1);
+      i++;
+    }
+    free_map_release(disk_inode->double_indirect_block, 1);
+    free(ind_block1);
+  }
+  /* Free indirect blocks if exist */
+  if(disk_inode->indirect_block > 0) {
+    int i = 0;
+    struct inode_indirect_block *ind_block1 = malloc(sizeof *ind_block1);
+    bc_read(disk_inode->double_indirect_block, ind_block, BLOCK_SECTOR_SIZE, 0);
+    while (ind_block1->table[i] > 0) {
+      free_map_release(ind_block1->table[i], 1);
+      i++;
+    }
+    free(ind_block1);
+    free_map_release(disk_inode->indirect_block, 1);
+  }
+  /* Free direct blocks */
+  int i = 0;
+  while(disk_inode->direct_block[i] > 0) {
+    free_map_release(disk_inode->direct_block[i],1);
+    i++;
+  }
 }

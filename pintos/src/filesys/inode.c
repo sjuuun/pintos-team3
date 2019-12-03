@@ -70,19 +70,25 @@ byte_to_sector (const struct inode *inode, off_t pos)
   */
 
   off_t pos_sector = pos / BLOCK_SECTOR_SIZE;
-  block_sector_t = result_sec;
+  struct inode_disk *disk = &inode->data;
+  block_sector_t result_sec;
   /* Direct Access */
   if (pos_sector < DIRECT_BLOCK_ENTRIES)
   {
-    result_sec = inode->data.direct_block[pos_sector]
+    result_sec = disk->direct_block[pos_sector]
   }
   /* Indirect Access */
   else if (pos_sector < (off_t)(DIRECT_BLOCK_ENTRIES + INDIRECT_BLOCK_ENTRIES))
   {
     struct inode_indirect_block *indirect = malloc(sizeof inode_indirect_block);
-    bc_read(inode->data.indirect_block, indirect, BLOCK_SECTOR_SIZE, 0);
-    pos_sector -= DIRECT_BLOCK_ENTRIES;
-    result_sec = indirect[pos_sector]
+    int index1, remain;
+    if (indirect == NULL)
+      return -1;
+
+    index1 = disk->indirect_block;
+    remain = pos_sector - DIRECT_BLOCK_ENTRIES;
+    bc_read(index1, indirect, BLOCK_SECTOR_SIZE, 0);
+    result_sec = indirect->table[remain]
     free(indirect);
   }
   /* Double Indirect Access */
@@ -90,18 +96,23 @@ byte_to_sector (const struct inode *inode, off_t pos)
 			INDIRECT_BLOCK_ENTRIES * (INDIRECT_BLOCK_ENTRIES + 1)))
   {
     struct inode_indirect_block *indirect = malloc(sizeof inode_indirect_block);
-    bc_read(inode->data.double_indirect_block, indirect, BLOCK_SECTOR_SIZE, 0);
-    pos_sector -= (DIRECT_BLOCK_ENTRIES + INDIRECT_BLOCK_ENTRIES); 
-    int index_sec = indirect[pos_sector / INDIRECT_BLOCK_ENTRIES];
+    int index1, index2, remain;
+    if (indirect == NULL)
+      return -1;
 
-    bc_read(index_sec, indirect, BLOCK_SECTOR_SIZE, 0);
-    pos_sector %= INDIRECT_BLOCK_ENTRIES;
-    result_sec = indirect[pos_sector];
+    index1 = disk->double_indirect_block;
+    remain = pos_sector - (DIRECT_BLOCK_ENTRIES + INDIRECT_BLOCK_ENTRIES);
+    bc_read(index1, indirect, BLOCK_SECTOR_SIZE, 0);
+
+    index2 = indirect->table[remain / INDIRECT_BLOCK_ENTRIES];
+    remain %= INDIRECT_BLOCK_ENTRIES;
+    bc_read(index2, indirect, BLOCK_SECTOR_SIZE, 0);
+    result_sec = indirect->table[remain];
     free(indirect);
   }
   else
   {
-    result_sec = 0;
+    result_sec = -1;
   }
 
   return result_sec

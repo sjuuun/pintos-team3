@@ -363,10 +363,10 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   /* Extend file if needed */
   lock_acquire(&inode->extend_lock);
   off_t old_length = disk_inode->length;
-  off_t write_end = offset + size - 1;
+  off_t write_end = offset + size;
 
-  if (write_end > old_length - 1) {
-    inode_extend_file(disk_inode, write_end + 1);
+  if (write_end > old_length) {
+    inode_extend_file(disk_inode, write_end);
   }
   bc_write(inode->sector, disk_inode, BLOCK_SECTOR_SIZE, 0);
   lock_release(&inode->extend_lock);

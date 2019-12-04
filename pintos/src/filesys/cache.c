@@ -59,7 +59,7 @@ bc_lookup(block_sector_t sector)
 {
   int i;
   for(i=0; i < CACHE_SECTOR_NUMBER; i++) {
-    if (buffer_cache[i].sector == sector) {
+    if (!buffer_cache[i].isempty && (buffer_cache[i].sector == sector)) {
       return i;
     }
   }

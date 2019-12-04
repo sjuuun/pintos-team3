@@ -57,15 +57,17 @@ struct inode
     bool removed;                       /* True if deleted, false otherwise. */
     int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
     struct lock extend_lock;		/* Use for extending file length. */
-    //struct inode_disk data;             /* Inode content. */
+    struct inode_disk data;             /* Inode content. */
   };
 
 /* Get related inode_disk from inode. Store inode_disk in input. */
+/*
 static void
 get_disk_inode (const struct inode *inode, struct inode_disk *inode_disk)
 {
   bc_read(inode->sector, inode_disk, BLOCK_SECTOR_SIZE, 0);
 }
+*/
 
 /* Returns the block device sector that contains byte offset POS
    within INODE.
@@ -94,7 +96,7 @@ byte_to_sector (const struct inode_disk *inode_disk, off_t pos)
   else if (pos_sector < (off_t)(DIRECT_BLOCK_ENTRIES + INDIRECT_BLOCK_ENTRIES))
   {
     struct inode_indirect_block *indirect = malloc(sizeof *indirect);
-    int index1, remain;
+    off_t index1, remain;
     if (indirect == NULL)
       return -1;
 
@@ -109,7 +111,7 @@ byte_to_sector (const struct inode_disk *inode_disk, off_t pos)
 			INDIRECT_BLOCK_ENTRIES * (INDIRECT_BLOCK_ENTRIES + 1)))
   {
     struct inode_indirect_block *indirect = malloc(sizeof *indirect);
-    int index1, index2, remain;
+    off_t index1, index2, remain;
     if (indirect == NULL)
       return -1;
 
@@ -226,6 +228,7 @@ inode_open (block_sector_t sector)
   inode->removed = false;
   lock_init(&inode->extend_lock);
   //block_read (fs_device, inode->sector, &inode->data);
+  bc_read (inode->sector, &inode->data, BLOCK_SECTOR_SIZE, 0);
   return inode;
 }
 
@@ -269,11 +272,8 @@ inode_close (struct inode *inode)
           free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length)); 
           */
-          struct inode_disk *disk_inode = malloc(sizeof *disk_inode);
-          get_disk_inode (inode, disk_inode);
-          free_inode_sectors(disk_inode);
-          free_map_release(inode->sector, BLOCK_SECTOR_SIZE);
-          free(disk_inode);
+          free_inode_sectors(&inode->data);
+          free_map_release(inode->sector, 1);
         }
 
       free (inode); 
@@ -298,15 +298,11 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   //uint8_t *bounce = NULL;
-  struct inode_disk *disk_inode = malloc(sizeof *disk_inode);
-  if (disk_inode == NULL)
-    return 0;
-  get_disk_inode (inode, disk_inode);
 
   while (size > 0) 
     {
       /* Disk sector to read, starting byte offset within sector. */
-      block_sector_t sector_idx = byte_to_sector (disk_inode, offset);
+      block_sector_t sector_idx = byte_to_sector (&inode->data, offset);
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
 
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
@@ -359,20 +355,17 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   //uint8_t *bounce = NULL;
-  struct inode_disk *disk_inode = malloc(sizeof *disk_inode);
-  if (disk_inode == NULL)
-    return 0;
-  get_disk_inode (inode, disk_inode);
+  struct inode_disk *disk_inode = &inode->data;
 
   if (inode->deny_write_cnt)
     return 0;
 
   /* TODO: extend file if needed */
   lock_acquire(&inode->extend_lock);
-  int old_length = disk_inode->length;
-  int write_end = offset + size - 1;
+  off_t old_length = disk_inode->length;
+  off_t write_end = offset + size - 1;
 
-  if (write_end > old_length - 1) {
+  if (write_end > old_length) {
     inode_extend_file(disk_inode, write_end);
   }
   bc_write(inode->sector, disk_inode, BLOCK_SECTOR_SIZE, 0);
@@ -427,8 +420,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       offset += chunk_size;
       bytes_written += chunk_size;
     }
-  bc_write(inode->sector, disk_inode, BLOCK_SECTOR_SIZE, 0);
-  free(disk_inode);
+  //bc_write(inode->sector, disk_inode, BLOCK_SECTOR_SIZE, 0);
   //free (bounce);
 
   return bytes_written;
@@ -458,11 +450,14 @@ inode_allow_write (struct inode *inode)
 off_t
 inode_length (const struct inode *inode)
 {
+  /*
   struct inode_disk *inode_disk = malloc(sizeof *inode_disk);
   get_disk_inode(inode, inode_disk);
   off_t result = inode_disk->length;
   free(inode_disk);
   return result;
+  */
+  return inode->data.length;
 }
 
 /* Update new sector number in disk_inode. */
@@ -567,7 +562,7 @@ register_sector (struct inode_disk *disk_inode, block_sector_t new_sector)
     }
     if (double_indirect != NULL) {
       bc_write(ind2, double_indirect, BLOCK_SECTOR_SIZE, 0);
-      free(indirect);
+      free(double_indirect);
     }
     return true;
 }
@@ -613,6 +608,7 @@ free_inode_sectors (struct inode_disk *disk_inode)
     while (ind_block1->table[i] > 0) {
       int j = 0;
       struct inode_indirect_block *ind_block2 = malloc(sizeof *ind_block2);
+      bc_read(ind_block1->table[i], ind_block2, BLOCK_SECTOR_SIZE, 0);
       while (ind_block2->table[j] > 0) {
         free_map_release(ind_block2->table[j], 1);
         j++;
@@ -621,8 +617,8 @@ free_inode_sectors (struct inode_disk *disk_inode)
       free_map_release(ind_block1->table[i], 1);
       i++;
     }
-    free_map_release(disk_inode->double_indirect_block, 1);
     free(ind_block1);
+    free_map_release(disk_inode->double_indirect_block, 1);
   }
   /* Free indirect blocks if exist */
   if(disk_inode->indirect_block > 0) {

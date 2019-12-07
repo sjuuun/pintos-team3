@@ -6,8 +6,8 @@
 #include "devices/block.h"
 
 /* Flag for indicating file or directory. */
-#define REGULAR_FILE 0
-#define DIRECTORY 1
+#define DIRECTORY 0
+#define REGULAR_FILE 1
 
 struct bitmap;
 

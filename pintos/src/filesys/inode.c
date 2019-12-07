@@ -651,6 +651,9 @@ free_inode_sectors (struct inode_disk *disk_inode)
 bool
 is_inode_file (struct inode *inode)
 {
-  struct inode_disk inode_disk = inode->data;
-  return (bool) inode_disk.isfile;
+  struct inode_disk *inode_disk = &inode->data;
+  if (inode_disk->isfile == REGULAR_FILE)
+    return true;
+  else
+    return false;
 }

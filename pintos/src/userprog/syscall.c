@@ -12,6 +12,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/file.h"
+#include "filesys/inode.h"
 #include "filesys/filesys.h"
 #include "threads/synch.h"
 #include "vm/page.h"
@@ -316,7 +317,15 @@ munmap (mapid_t mapid)
 bool
 chdir (const char *dir)
 {
-  return true;
+  struct dir *change;
+  change = parse_path(dir, NULL);
+  if (change == NULL)
+    return false;
+  else {
+    dir_close(thread_current()->directory);
+    thread_current()->directory = change;
+    return true;
+  }
 }
 
 /* Creates the directory named input. Also, it can be relative or absolute.
@@ -325,7 +334,10 @@ chdir (const char *dir)
 bool
 mkdir (const char *dir)
 {
-  return true;
+  if (filesys_create_dir(dir))
+    return true;
+  else
+    return false;
 }
 
 /* Reads a directory entry from file descriptor fd, which must represent
@@ -335,7 +347,20 @@ mkdir (const char *dir)
 bool
 readdir (int fd, char *name)
 {
-  return true;
+  struct file *file = thread_current(fdt[fd]);
+  struct inode *inode = file->inode;
+  if (is_inode_file (inode))
+    return false;
+
+  struct dir *dir = dir_open(inode);
+  if (dir_readdir(dir, name)) {
+    dir_close(dir);
+    return true;
+  }
+  else {
+    dir_close(dir);
+    return false;
+  }
 }
 
 /* Returns true if fd represents a directory, false if it represents
@@ -343,7 +368,9 @@ readdir (int fd, char *name)
 bool
 isdir (int fd)
 {
-  return true;
+  struct file *file = thread_current(fdt[fd]);
+  struct inode *inode = file->inode;
+  return !(is_inode_file (inode));
 }
 
 /* Returns the inode number of the inode associated with fd, which may
@@ -353,7 +380,9 @@ isdir (int fd)
 int
 inumber (int fd)
 {
-  return 0;
+  struct file *file = thread_current(fdt[fd]);
+  struct inode *inode = file->inode;
+  return inode->sector;
 }
 
 /* Check valid address of esp, and store argument in arg. */

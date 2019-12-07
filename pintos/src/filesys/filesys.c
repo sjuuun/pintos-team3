@@ -120,6 +120,25 @@ filesys_create (const char *name, off_t initial_size)
   return success;
 }
 
+/* Create a directory named NAME. Returns true if successful,
+   false otherwise. Fails if a directory named NAME already
+   exists, or if internal memory allocation fails. */
+bool
+filesys_create_dir (const char *name)
+{
+  block_sector_t inode_sector = 0;
+  char *dirname[NAME_MAX + 1];
+  struct dir *dir = parse_path(name, dirname);
+  bool success = (dir != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && inode_create (inode_sector, initial_size, false)
+                  && dir_add (dir, dirname, inode_sector));
+  if (!success && inode_sector != 0)
+    free_map_release (inode_sector, 1);
+  dir_close (dir);
+  return success;
+}
+
 /* Opens the file with the given NAME.
    Returns the new file if successful or a null pointer
    otherwise.

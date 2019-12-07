@@ -8,6 +8,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "filesys/cache.h"
+#include "threads/malloc.h"
 
 /* Partition that contains the file system. */
 struct block *fs_device;
@@ -44,6 +45,56 @@ filesys_done (void)
   bc_exit();
 }
 
+
+struct dir *
+parse_path(const char *name, char *filename)
+{
+  name : sadasd/gd/file
+  name1 : asdasd/file
+  /* Copy name to name_cp for tokenizing */
+  char *name_cp = malloc(strlen(name));
+  strlcpy(name_cp, name, strlen(name));
+  /* If name contains root dir */
+  struct dir *dir;
+  char *token, *save_ptr;
+  if (name_cp[0] == '/') {
+    dir = dir_open_root();
+    name_cp++; 
+  }
+  else {
+    dir = dir_reopen(thread_current()->directory);
+  }
+
+  int count = 0, i = 0;
+  char *iter = name_cp;
+  while(*iter != '\0') {
+    if (*iter == '/')
+      count++;
+    iter++;
+  }
+  count++;
+
+  char *parse[count];
+  for (token = strtok_r (name_cp, "/", &save_ptr); token != NULL; 
+        token = strtok_r (NULL, "/", &save_ptr)) {
+    parse[i] = token;
+    i++;
+  }
+
+  struct inode *inode;
+  for (i = 0; i < count - 1 ; i++) {
+    if (!dir_lookup(dir, parse[i], &inode)) {
+      // free name_cp
+      dir_close(dir);
+      return NULL;
+    }
+    dir_close(dir);
+    dir = dir_open(inode);
+  }
+  strlcpy(filename, parse[i], strlen(parse[i]));
+  return dir;
+}
+
 /* Creates a file named NAME with the given INITIAL_SIZE.
    Returns true if successful, false otherwise.
    Fails if a file named NAME already exists,
@@ -52,15 +103,17 @@ bool
 filesys_create (const char *name, off_t initial_size) 
 {
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  //struct dir *dir = dir_open_root ();
+  char *filename = malloc(strlen(name));
+  struct dir *dir = parse_path(name, filename);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size, false)
-                  && dir_add (dir, name, inode_sector));
+                  && inode_create (inode_sector, initial_size, true)
+                  && dir_add (dir, filename, inode_sector));
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
   dir_close (dir);
-
+  free(filename);
   return success;
 }
 

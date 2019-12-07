@@ -15,6 +15,7 @@
 #include "userprog/process.h"
 #include "lib/user/syscall.h"
 #endif
+#include "filesys/directory.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -224,6 +225,10 @@ thread_create (const char *name, int priority,
   /* Initialize next_fd for FDT */
   t->next_fd = 2;
 #endif
+
+  if (thread_current()->directory != NULL) {
+    t->directory = dir_reopen(thread_current()->directory);
+  }
   
   /* Add to run queue. */
   thread_unblock (t);
@@ -336,6 +341,11 @@ thread_exit (void)
   }
   intr_set_level(old_level);
 #endif
+
+  /* Close current directory. */
+  if (thread_current()->directory != NULL) {
+    dir_close(thread_current()->directory);
+  }
 
   /* Remove thread from all threads list, set our status to dying,
      and schedule another process.  That process will destroy us

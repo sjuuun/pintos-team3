@@ -2,6 +2,7 @@
 #include <list.h>
 #include <debug.h>
 #include <round.h>
+#include <stdbool.h>
 #include <string.h>
 #include "devices/block.h"
 #include "filesys/filesys.h"
@@ -156,7 +157,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, bool is_file)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -175,6 +176,11 @@ inode_create (block_sector_t sector, off_t length)
       disk_inode->magic = INODE_MAGIC;
       disk_inode->indirect_block = 0;
       disk_inode->double_indirect_block = 0;
+      if (is_file)
+        disk_inode->isfile = REGULAR_FILE;
+      else
+        disk_inode->isfile = DIRECTORY;
+
       if (length > 0) {
         inode_extend_file(disk_inode, length);
       }

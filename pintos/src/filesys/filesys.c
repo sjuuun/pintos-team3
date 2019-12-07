@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "threads/thread.h"
 #include "filesys/file.h"
 #include "filesys/free-map.h"
 #include "filesys/inode.h"
@@ -33,6 +34,8 @@ filesys_init (bool format)
     do_format ();
 
   free_map_open ();
+
+  thread_current()->directory = dir_open_root();
 }
 
 /* Shuts down the file system module, writing any unwritten data

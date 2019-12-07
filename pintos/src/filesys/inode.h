@@ -5,6 +5,10 @@
 #include "filesys/off_t.h"
 #include "devices/block.h"
 
+/* Flag for indicating file or directory. */
+#define REGULAR_FILE 0
+#define DIRECTORY 1
+
 struct bitmap;
 
 void inode_init (void);
@@ -19,5 +23,7 @@ off_t inode_write_at (struct inode *, const void *, off_t size, off_t offset);
 void inode_deny_write (struct inode *);
 void inode_allow_write (struct inode *);
 off_t inode_length (const struct inode *);
+
+bool is_inode_file (struct inode *);
 
 #endif /* filesys/inode.h */

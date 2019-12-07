@@ -201,6 +201,12 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
+  
+  /* Check if target file is file or directory */
+  if (is_inode_file(inode) == DIRECTORY) {
+    if (inode_length(inode) != 0) 
+      goto done;
+  }
 
   /* Erase directory entry. */
   e.in_use = false;

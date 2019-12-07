@@ -18,10 +18,6 @@
 #define DIRECT_BLOCK_ENTRIES 123
 #define INDIRECT_BLOCK_ENTRIES 128
 
-/* Flag for indicating file or directory. */
-#define REGULAR_FILE 0
-#define DIRECTORY 1
-
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
 struct inode_disk
@@ -651,3 +647,10 @@ free_inode_sectors (struct inode_disk *disk_inode)
     i++;
   }
 }
+
+bool is_inode_file (struct inode *inode)
+{
+  struct inode_disk inode_disk = inode->data;
+  return (bool) inode_disk.isfile;
+}
+

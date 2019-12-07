@@ -183,8 +183,13 @@ write (int fd, const void *buffer, unsigned size)
     putbuf((char *)buffer, size);
     return size;
   }
-  else
-    return file_write(thread_current()->fdt[fd], (char *)buffer, size);
+  else {
+    struct file *file = thread_current()->fdt[fd];
+    struct inode *inode = file_get_inode (file);
+    if (is_inode_file(inode) == DIRECTORY)
+      return -1;
+    return file_write(file, (char *)buffer, size);
+  }
 }
 
 void

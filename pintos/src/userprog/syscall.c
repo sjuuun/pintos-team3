@@ -309,6 +309,53 @@ munmap (mapid_t mapid)
   }
 }
 
+/* System call for project 4. */
+/* Changes the current working directory of the process to input.
+   Directory name might be relative or absolute.
+   Return true if successful, false on failure. */
+bool
+chdir (const char *dir)
+{
+  return true;
+}
+
+/* Creates the directory named input. Also, it can be relative or absolute.
+   Return true if successful, false on failure.
+   Fail if input already exists. */
+bool
+mkdir (const char *dir)
+{
+  return true;
+}
+
+/* Reads a directory entry from file descriptor fd, which must represent
+   a directory. If successful, store the null-terminated file name in input,
+   which must have room for READDIR_MAX_LEN + 1 bytes, and return true.
+   If no entries are left in the directory, returns false. */
+bool
+readdir (int fd, char *name)
+{
+  return true;
+}
+
+/* Returns true if fd represents a directory, false if it represents
+   an regular file. */
+bool
+isdir (int fd)
+{
+  return true;
+}
+
+/* Returns the inode number of the inode associated with fd, which may
+   represent an ordinary file or a directory.
+   Inode number is unique during th file's existence.
+   In PintOS project, the sector number is used as an inode number. */
+int
+inumber (int fd)
+{
+  return 0;
+}
+
 /* Check valid address of esp, and store argument in arg. */
 static void
 get_argument (void *esp, int *arg, int count)
@@ -429,6 +476,34 @@ syscall_handler (struct intr_frame *f)
     case SYS_MUNMAP:
       get_argument(esp, arg, 1);
       munmap((mapid_t)arg[0]);
+      break;
+
+    case SYS_CHDIR:
+      get_argument(esp, arg, 1);
+      is_valid_char((const char *)arg[0], esp);
+      f->eax = chdir((const char *)arg[0]);
+      break;
+
+    case SYS_MKDIR:
+      get_argument(esp, arg, 1);
+      is_valid_char((const char *)arg[0], esp);
+      f->eax = mkdir((const char *)arg[0]);
+      break;
+
+    case SYS_READDIR:
+      get_argument(esp, arg, 2);
+      is_valid_char((const char *)arg[1], esp);
+      f->eax = readdir((int)arg[0], (char *)arg[1]);
+      break;
+
+    case SYS_ISDIR:
+      get_argument(esp, arg, 1);
+      f->eax = isdir((int)arg[0]);
+      break;
+
+    case SYS_INUMBER:
+      get_argument(esp, arg, 1);
+      f->eax = inumber((int)arg[0]);
       break;
 
     default:

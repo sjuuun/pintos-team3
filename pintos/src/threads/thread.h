@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include "threads/synch.h"
 #include "filesys/file.h"
+#include "filesys/directory.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -123,6 +124,9 @@ struct thread
     
     /* memory-mapped file */
     struct list mmap_list;
+
+    /* Define current directory. */
+    struct dir *directory;		/* Represent current directory. */
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

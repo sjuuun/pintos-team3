@@ -14,8 +14,12 @@
 #define INODE_MAGIC 0x494e4f44
 
 /* Block number in inode_disk */
-#define DIRECT_BLOCK_ENTRIES 124
+#define DIRECT_BLOCK_ENTRIES 123
 #define INDIRECT_BLOCK_ENTRIES 128
+
+/* Flag for indicating file or directory. */
+#define REGULAR_FILE 0
+#define DIRECTORY 1
 
 /* On-disk inode.
    Must be exactly BLOCK_SECTOR_SIZE bytes long. */
@@ -28,6 +32,8 @@ struct inode_disk
     block_sector_t direct_block[DIRECT_BLOCK_ENTRIES];
     block_sector_t indirect_block;
     block_sector_t double_indirect_block;
+
+    uint32_t isfile;			/* Indicating if it is file. */
   };
 
 /* Structure of indirect block. */

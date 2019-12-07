@@ -318,12 +318,23 @@ bool
 chdir (const char *dir)
 {
   struct dir *change;
-  change = parse_path(dir, NULL);
+  struct dir *new;
+  struct inode *new_inode;
+  char dirname[NAME_MAX + 1];
+  change = parse_path(dir, dirname);
+
   if (change == NULL)
+    return false;
+
+  if (!dir_lookup(change, dirname, &new_inode))
+    return false;
+
+  new = dir_open(new_inode);
+  if (new == NULL)
     return false;
   else {
     dir_close(thread_current()->directory);
-    thread_current()->directory = change;
+    thread_current()->directory = new;
     return true;
   }
 }

@@ -347,8 +347,8 @@ mkdir (const char *dir)
 bool
 readdir (int fd, char *name)
 {
-  struct file *file = thread_current(fdt[fd]);
-  struct inode *inode = file->inode;
+  struct file *file = thread_current()->fdt[fd];
+  struct inode *inode = file_get_inode(file);
   if (is_inode_file (inode))
     return false;
 
@@ -368,8 +368,8 @@ readdir (int fd, char *name)
 bool
 isdir (int fd)
 {
-  struct file *file = thread_current(fdt[fd]);
-  struct inode *inode = file->inode;
+  struct file *file = thread_current()->fdt[fd];
+  struct inode *inode = file_get_inode(file);
   return !(is_inode_file (inode));
 }
 
@@ -380,9 +380,9 @@ isdir (int fd)
 int
 inumber (int fd)
 {
-  struct file *file = thread_current(fdt[fd]);
-  struct inode *inode = file->inode;
-  return inode->sector;
+  struct file *file = thread_current()->fdt[fd];
+  struct inode *inode = file_get_inode(file);
+  return (int)inode_get_inumber (inode);
 }
 
 /* Check valid address of esp, and store argument in arg. */

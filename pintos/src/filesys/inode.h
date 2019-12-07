@@ -5,6 +5,10 @@
 #include "filesys/off_t.h"
 #include "devices/block.h"
 
+/* Flag for indicating file or directory. */
+#define REGULAR_FILE 0
+#define DIRECTORY 1
+
 struct bitmap;
 
 void inode_init (void);

@@ -52,11 +52,9 @@ filesys_done (void)
 struct dir *
 parse_path(const char *name, char *filename)
 {
-  name : sadasd/gd/file
-  name1 : asdasd/file
   /* Copy name to name_cp for tokenizing */
-  char *name_cp = malloc(strlen(name));
-  strlcpy(name_cp, name, strlen(name));
+  char *name_cp = calloc(1, strlen(name)+1);
+  strlcpy(name_cp, name, strlen(name)+1);
   /* If name contains root dir */
   struct dir *dir;
   char *token, *save_ptr;
@@ -71,8 +69,9 @@ parse_path(const char *name, char *filename)
   int count = 0, i = 0;
   char *iter = name_cp;
   while(*iter != '\0') {
-    if (*iter == '/')
+    if (*iter == '/') {
       count++;
+    }
     iter++;
   }
   count++;
@@ -94,7 +93,8 @@ parse_path(const char *name, char *filename)
     dir_close(dir);
     dir = dir_open(inode);
   }
-  strlcpy(filename, parse[i], strlen(parse[i]));
+  if (filename != NULL)
+    strlcpy(filename, parse[i], strlen(parse[i])+1);
   return dir;
 }
 
@@ -107,7 +107,7 @@ filesys_create (const char *name, off_t initial_size)
 {
   block_sector_t inode_sector = 0;
   //struct dir *dir = dir_open_root ();
-  char *filename = malloc(strlen(name));
+  char *filename = calloc(1, strlen(name)+1);
   struct dir *dir = parse_path(name, filename);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
@@ -128,11 +128,13 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  //struct dir *dir = dir_open_root ();
+  char *filename = calloc(1, strlen(name)+1);
+  struct dir *dir = parse_path(name, filename);
   struct inode *inode = NULL;
 
   if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+    dir_lookup (dir, filename, &inode);
   dir_close (dir);
 
   return file_open (inode);
@@ -145,8 +147,10 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
+  //struct dir *dir = dir_open_root ();
+  char *filename = calloc(1, strlen(name)+1);
+  struct dir *dir = parse_path(name, filename);
+  bool success = dir != NULL && dir_remove (dir, filename);
   dir_close (dir); 
 
   return success;

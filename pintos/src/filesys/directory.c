@@ -203,8 +203,8 @@ dir_remove (struct dir *dir, const char *name)
     goto done;
   
   /* Check if target file is file or directory */
-  if (inode->data.isfile == DIRECTORY) {
-    if (inode->data.length != 0) 
+  if (is_inode_file(inode) == DIRECTORY) {
+    if (inode_length(inode) != 0) 
       goto done;
   }
 

@@ -55,7 +55,7 @@ parse_path(const char *name, char *filename)
   /* Copy name to name_cp for tokenizing */
   char *name_cp = calloc(1, strlen(name)+1);
   strlcpy(name_cp, name, strlen(name)+1);
-  /* If name contains root dir */
+  /* If name contains root dir or not */
   struct dir *dir;
   char *token, *save_ptr;
   if (name_cp[0] == '/') {
@@ -66,6 +66,12 @@ parse_path(const char *name, char *filename)
     dir = dir_reopen(thread_current()->directory);
   }
   
+  /* If name contains just root dir sign (/) */ 
+  if (strlen(name_cp) == 0) {
+    return dir;
+  }
+   
+  /* Iterate to find how many / in name */
   int count = 0, i = 0;
   char *iter = name_cp;
   while(*iter != '\0') {
@@ -76,6 +82,7 @@ parse_path(const char *name, char *filename)
   }
   count++;
 
+  /* Parse and tokenize name */
   char *parse[count];
   for (token = strtok_r (name_cp, "/", &save_ptr); token != NULL; 
         token = strtok_r (NULL, "/", &save_ptr)) {
@@ -83,6 +90,7 @@ parse_path(const char *name, char *filename)
     i++;
   }
 
+  /* Get directory */
   struct inode *inode;
   for (i = 0; i < count - 1 ; i++) {
     if (!dir_lookup(dir, parse[i], &inode)) {
@@ -93,8 +101,11 @@ parse_path(const char *name, char *filename)
     dir_close(dir);
     dir = dir_open(inode);
   }
+
+  /* Copy filename into filename */
   if (filename != NULL)
     strlcpy(filename, parse[i], strlen(parse[i])+1);
+
   return dir;
 }
 
@@ -151,7 +162,10 @@ filesys_open (const char *name)
   char *filename = calloc(1, strlen(name) + 1);
   struct dir *dir = parse_path(name, filename);
   struct inode *inode = NULL;
-  if (dir != NULL)
+
+  if (strlen(filename) == 0)
+    inode = dir_get_inode(dir);
+  else if (dir != NULL)
     dir_lookup (dir, filename, &inode);
   dir_close (dir);
   free(filename);

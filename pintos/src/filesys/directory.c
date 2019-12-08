@@ -84,6 +84,27 @@ dir_get_inode (struct dir *dir)
   return dir->inode;
 }
 
+/* Check if directroy 'name' in 'dir' is empty or not. 
+   Return true if it is empty, false otherwise. */
+static bool
+is_dir_empty (struct dir *dir, const char *name)
+{
+  struct dir_entry e;
+  size_t ofs;
+  struct inode *new_inode;
+
+  if (!dir_lookup(dir, name, &new_inode))
+    return false;
+  for (ofs = 0; inode_read_at (new_inode, &e, sizeof e, ofs) == sizeof e;
+       ofs += sizeof e)
+    if (e.in_use)
+      {
+        return false;
+      }
+  return true;
+
+}
+
 /* Searches DIR for a file with the given NAME.
    If successful, returns true, sets *EP to the directory entry
    if EP is non-null, and sets *OFSP to the byte offset of the
@@ -204,7 +225,7 @@ dir_remove (struct dir *dir, const char *name)
   
   /* Check if target file is file or directory */
   if (!is_inode_file(inode)) {
-    if (inode_length(inode) != 0) 
+    if (!is_dir_empty(dir, name)) 
       goto done;
   }
 

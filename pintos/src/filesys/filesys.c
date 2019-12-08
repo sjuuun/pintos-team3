@@ -65,7 +65,7 @@ parse_path(const char *name, char *filename)
   else {
     dir = dir_reopen(thread_current()->directory);
   }
-
+  
   int count = 0, i = 0;
   char *iter = name_cp;
   while(*iter != '\0') {
@@ -107,7 +107,7 @@ filesys_create (const char *name, off_t initial_size)
 {
   block_sector_t inode_sector = 0;
   //struct dir *dir = dir_open_root ();
-  char *filename = malloc(strlen(name) + 1);
+  char *filename = calloc(1, strlen(name) + 1);
   struct dir *dir = parse_path(name, filename);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
@@ -148,10 +148,9 @@ struct file *
 filesys_open (const char *name)
 {
   //struct dir *dir = dir_open_root ();
-  char *filename = malloc(strlen(name) + 1);
+  char *filename = calloc(1, strlen(name) + 1);
   struct dir *dir = parse_path(name, filename);
   struct inode *inode = NULL;
-
   if (dir != NULL)
     dir_lookup (dir, filename, &inode);
   dir_close (dir);
@@ -168,7 +167,7 @@ bool
 filesys_remove (const char *name) 
 {
   //struct dir *dir = dir_open_root ();
-  char *filename = malloc(strlen(name) + 1);
+  char *filename = calloc(1, strlen(name) + 1);
   struct dir *dir = parse_path(name, filename);
   bool success = dir != NULL && dir_remove (dir, filename);
   dir_close (dir); 

@@ -367,7 +367,7 @@ readdir (int fd, char *name)
   struct inode *inode = file_get_inode(file);
   if (is_inode_file (inode))
     return false;
-
+  // What if name contains directories ? , ex) name : /ab/c/d/e
   struct dir *dir = dir_open(inode);
   if (dir_readdir(dir, name)) {
     dir_close(dir);

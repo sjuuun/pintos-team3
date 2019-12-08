@@ -6,7 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/inode.h"
 #include "threads/malloc.h"
-
+#include "threads/thread.h"
 /* A directory. */
 struct dir 
   {
@@ -94,16 +94,20 @@ is_dir_empty (struct dir *dir, const char *name)
   struct dir_entry e;
   size_t ofs;
   struct inode *new_inode;
-
+  int count = 0;
   if (!dir_lookup(dir, name, &new_inode))
     return false;
   for (ofs = 0; inode_read_at (new_inode, &e, sizeof e, ofs) == sizeof e;
        ofs += sizeof e)
     if (e.in_use)
       {
-        return false;
+        count++;
       }
-  return true;
+
+  if (count == 2)
+    return true;
+  else
+    return false;
 
 }
 
@@ -227,7 +231,7 @@ dir_remove (struct dir *dir, const char *name)
   
   /* Check if target file is file or directory */
   if (!is_inode_file(inode)) {
-    if (!is_dir_empty(dir, name)) 
+    if (!is_dir_empty(dir, name))
       goto done;
   }
 
@@ -258,9 +262,25 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
       dir->pos += sizeof e;
       if (e.in_use)
         {
-          strlcpy (name, e.name, NAME_MAX + 1);
-          return true;
+          if ((strcmp(e.name, ".") != 0) && (strcmp(e.name, "..") != 0)) {
+            strlcpy (name, e.name, NAME_MAX + 1);
+            return true;
+          }
         } 
     }
   return false;
+}
+
+bool
+dir_add_basic (struct dir *pdir, struct dir *chdir)
+{
+  bool success = false;
+  block_sector_t pd_sector, my_sector;
+  struct inode *p_inode = dir_get_inode(pdir);
+  struct inode *c_inode = dir_get_inode(chdir);
+  pd_sector = inode_get_inumber(p_inode);
+  my_sector = inode_get_inumber(c_inode);
+  success = dir_add(chdir, ".", my_sector);
+  success = dir_add(chdir, "..", pd_sector);
+  return success;
 }

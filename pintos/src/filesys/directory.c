@@ -235,6 +235,8 @@ dir_remove (struct dir *dir, const char *name)
       goto done;
   }
 
+  if (thread_current()->directory->inode == inode)
+    thread_current()->directory = NULL;
   /* Erase directory entry. */
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 

@@ -59,12 +59,14 @@ parse_path(const char *name, char *filename)
   /* If name contains root dir or not */
   struct dir *dir;
   char *token, *save_ptr;
-  struct inode *tmp_inode;
+  //struct inode *tmp_inode;
   if (name_cp[0] == '/') {
     dir = dir_open_root();
     name_cp++; 
   }
   else {
+    if (thread_current()->directory == NULL)
+      return NULL;
     dir = dir_reopen(thread_current()->directory);
     //tmp_inode = dir_get_inode(dir);
     //if (tmp_inode->removed == true)

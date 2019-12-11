@@ -44,9 +44,8 @@ filesys_init (bool format)
 void
 filesys_done (void) 
 {
-  free_map_close ();
-
   bc_exit();
+  free_map_close ();
 }
 
 
@@ -55,6 +54,7 @@ parse_path(const char *name, char *filename)
 {
   /* Copy name to name_cp for tokenizing */
   char *name_cp = calloc(1, strlen(name)+1);
+  char *tmp = name_cp;
   strlcpy(name_cp, name, strlen(name)+1);
   /* If name contains root dir or not */
   struct dir *dir;
@@ -66,7 +66,7 @@ parse_path(const char *name, char *filename)
   }
   else {
     if (thread_current()->directory == NULL) {
-      free(name_cp);
+      free(tmp);
       return NULL;
     }
     dir = dir_reopen(thread_current()->directory);
@@ -77,7 +77,7 @@ parse_path(const char *name, char *filename)
   
   /* If name contains just root dir sign (/) */ 
   if (strlen(name_cp) == 0) {
-    free(name_cp);
+    free(tmp);
     return dir;
   }
    
@@ -104,7 +104,7 @@ parse_path(const char *name, char *filename)
   struct inode *inode;
   for (i = 0; i < count - 1 ; i++) {
     if (!dir_lookup(dir, parse[i], &inode)) {
-      // free name_cp
+      free(tmp);
       dir_close(dir);
       return NULL;
     }
@@ -116,7 +116,7 @@ parse_path(const char *name, char *filename)
   if (filename != NULL)
     strlcpy(filename, parse[i], strlen(parse[i])+1);
 
-  free(name_cp);            // Error here !
+  free(tmp);            // Error here !
   return dir;
 }
 

@@ -9,6 +9,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
 #include "userprog/syscall.h"
+#include "filesys/cache.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -237,11 +238,12 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
   int i;
-  
+
+ 
   /* Delete vm_entry and unmap mapped files. */
   vm_destroy(&cur->vm);
   munmap(EXIT);
-  
+  bc_flush_all();  
   /* close all files opened by current process */
   for (i=2; i<64; i++){
     if (cur->fdt[i] != NULL) {

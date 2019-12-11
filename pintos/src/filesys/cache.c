@@ -94,6 +94,7 @@ bc_flush_entry(int index)
   block_sector_t sector = buffer_cache[index].sector;
   block_write(fs_device, sector, buffer_cache[index].cache_addr);
   buffer_cache[index].isdirty = false;
+  buffer_cache[index].isempty = true;
 }
 
 void
@@ -101,7 +102,7 @@ bc_flush_all(void)
 {
   int i;
   for(i=0; i < CACHE_SECTOR_NUMBER; i++){
-    if (buffer_cache[i].isdirty == true) {
+    if (buffer_cache[i].isdirty == true && buffer_cache[i].isempty == false) {
       bc_flush_entry(i);
     }
   }

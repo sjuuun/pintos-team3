@@ -65,8 +65,10 @@ parse_path(const char *name, char *filename)
     name_cp++; 
   }
   else {
-    if (thread_current()->directory == NULL)
+    if (thread_current()->directory == NULL) {
+      free(name_cp);
       return NULL;
+    }
     dir = dir_reopen(thread_current()->directory);
     //tmp_inode = dir_get_inode(dir);
     //if (tmp_inode->removed == true)
@@ -75,6 +77,7 @@ parse_path(const char *name, char *filename)
   
   /* If name contains just root dir sign (/) */ 
   if (strlen(name_cp) == 0) {
+    free(name_cp);
     return dir;
   }
    
@@ -113,7 +116,7 @@ parse_path(const char *name, char *filename)
   if (filename != NULL)
     strlcpy(filename, parse[i], strlen(parse[i])+1);
 
-
+  free(name_cp);            // Error here !
   return dir;
 }
 

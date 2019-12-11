@@ -80,7 +80,7 @@ static block_sector_t
 byte_to_sector (const struct inode_disk *inode_disk, off_t pos)
 {
   ASSERT (inode_disk != NULL);
-  ASSERT (pos <= inode_disk->length);
+  ASSERT (pos <= inode_disk->length)
   /*
   if (pos < inode->data.length)
     return inode->data.start + pos / BLOCK_SECTOR_SIZE;

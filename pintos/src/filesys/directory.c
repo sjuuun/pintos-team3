@@ -111,6 +111,21 @@ is_dir_empty (struct dir *dir, const char *name)
 
 }
 
+void
+dir_seek (struct dir *dir, off_t new_pos)
+{
+  ASSERT (dir != NULL);
+  ASSERT (new_pos >= 0);
+  dir->pos = new_pos;
+}
+
+off_t
+dir_tell (struct dir *dir)
+{
+  ASSERT (dir != NULL);
+  return dir->pos;
+}
+
 /* Searches DIR for a file with the given NAME.
    If successful, returns true, sets *EP to the directory entry
    if EP is non-null, and sets *OFSP to the byte offset of the
@@ -258,7 +273,8 @@ bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
 {
   struct dir_entry e;
-
+  if (strlen(name) == 0)
+    return false;
   while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) 
     {
       dir->pos += sizeof e;

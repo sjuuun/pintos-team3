@@ -11,6 +11,7 @@
 #include "threads/pte.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/inode.h"
 #include "filesys/filesys.h"
@@ -367,14 +368,16 @@ readdir (int fd, char *name)
   struct inode *inode = file_get_inode(file);
   if (is_inode_file (inode))
     return false;
-  // What if name contains directories ? , ex) name : /ab/c/d/e
-  struct dir *dir = dir_open(inode);
+  struct dir *dir = (struct dir *) file;
+  //dir_seek(dir, inode_get_pos(inode));
   if (dir_readdir(dir, name)) {
-    dir_close(dir);
+    //file_seek(file, dir_tell(dir));
+    //dir_close(dir);
     return true;
   }
   else {
-    dir_close(dir);
+    //file_seek(file, dir_tell(dir));
+    //dir_close(dir);
     return false;
   }
 }

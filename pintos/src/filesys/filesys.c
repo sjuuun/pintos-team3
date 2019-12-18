@@ -62,7 +62,9 @@ parse_path(const char *name, char *filename)
   //struct inode *tmp_inode;
   if (name_cp[0] == '/') {
     dir = dir_open_root();
-    name_cp++; 
+    name_cp++;
+    if (name_cp[0] == '/')
+      name_cp++; 
   }
   else {
     if (thread_current()->directory == NULL) {
@@ -116,7 +118,7 @@ parse_path(const char *name, char *filename)
   if (filename != NULL)
     strlcpy(filename, parse[i], strlen(parse[i])+1);
 
-  free(tmp);            // Error here !
+  free(tmp);
   return dir;
 }
 

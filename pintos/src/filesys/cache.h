@@ -5,15 +5,15 @@
 #include "filesys/inode.h"
 #include "lib/stdbool.h"
 
+/* Cache entry structure. */
 struct cache_entry
 {
-  bool isdirty;
-  bool isempty;
-  bool clock;
+  bool isdirty;                             /* Dirty flag */
+  bool isempty;                             /* Empty flag */
+  bool clock;                               /* Clock bit (for eviction) */
 
-  void *cache_addr;
-  block_sector_t sector;  
-  /* lock, clock bit */
+  void *cache_addr;                         /* Memory space for cache entry */
+  block_sector_t sector;                    /* Disk's sector */
 };
 
 void bc_init (void);

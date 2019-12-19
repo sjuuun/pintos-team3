@@ -243,6 +243,7 @@ process_exit (void)
   /* Delete vm_entry and unmap mapped files. */
   vm_destroy(&cur->vm);
   munmap(EXIT);
+  /* Flush all buffer cache to Disk. */
   bc_flush_all();  
   /* close all files opened by current process */
   for (i=2; i<64; i++){

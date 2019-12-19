@@ -87,7 +87,8 @@ dir_get_inode (struct dir *dir)
 }
 
 /* Check if directroy 'name' in 'dir' is empty or not. 
-   Return true if it is empty, false otherwise. */
+   Return true if it is empty, false otherwise. Ignore directory entries
+   '.' and '..'. */
 static bool
 is_dir_empty (struct dir *dir, const char *name)
 {
@@ -104,6 +105,7 @@ is_dir_empty (struct dir *dir, const char *name)
         count++;
       }
 
+  /* If directory has only two entries ('.' and '..') */
   if (count == 2)
     return true;
   else
@@ -229,14 +231,18 @@ dir_remove (struct dir *dir, const char *name)
   if (inode == NULL)
     goto done;
   
-  /* Check if target file is file or directory */
+  /* Check if target file is file or directory,
+     and if directory, check if it is empty or not. 
+     (Only empty directory can be removed.) */
   if (!is_inode_file(inode)) {
     if (!is_dir_empty(dir, name))
       goto done;
   }
 
+  /* If current thread's directory is removed directory, */
   if (thread_current()->directory->inode == inode)
     thread_current()->directory = NULL;
+
   /* Erase directory entry. */
   e.in_use = false;
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
@@ -258,22 +264,27 @@ bool
 dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
 {
   struct dir_entry e;
-  //if (strlen(name) == 0)
-  //  return false;
+
   while (inode_read_at (dir->inode, &e, sizeof e, dir->pos) == sizeof e) 
     {
       dir->pos += sizeof e;
       if (e.in_use)
         {
+          /* readdir ignore entries '.' and '..' */
           if ((strcmp(e.name, ".") != 0) && (strcmp(e.name, "..") != 0)) {
             strlcpy (name, e.name, NAME_MAX + 1);
             return true;
           }
         } 
     }
+
   return false;
 }
 
+/* Add two special directory entries ('.' and '..') when directory is being 
+   created. This function requires two inputs, parent directory and newly 
+   created directory. Get each directory's inode and its sector, and add 
+   directory entries using dir_add() function. */
 bool
 dir_add_basic (struct dir *pdir, struct dir *chdir)
 {

@@ -187,6 +187,7 @@ write (int fd, const void *buffer, unsigned size)
   else {
     struct file *file = thread_current()->fdt[fd];
     struct inode *inode = file_get_inode (file);
+    /* If fd has directory, return -1 */
     if (is_inode_file(inode) == DIRECTORY)
       return -1;
     return file_write(file, (char *)buffer, size);
@@ -317,6 +318,7 @@ munmap (mapid_t mapid)
 }
 
 /* System call for project 4. */
+
 /* Changes the current working directory of the process to input.
    Directory name might be relative or absolute.
    Return true if successful, false on failure. */
@@ -365,21 +367,9 @@ bool
 readdir (int fd, char *name)
 {
   struct file *file = thread_current()->fdt[fd];
-  struct inode *inode = file_get_inode(file);
-  if (is_inode_file (inode))
+  if (is_inode_file (file_get_inode(file)))
     return false;
-  struct dir *dir = (struct dir *) file;
-  //dir_seek(dir, inode_get_pos(inode));
-  if (dir_readdir(dir, name)) {
-    //file_seek(file, dir_tell(dir));
-    //dir_close(dir);
-    return true;
-  }
-  else {
-    //file_seek(file, dir_tell(dir));
-    //dir_close(dir);
-    return false;
-  }
+  return dir_readdir((struct dir *) file, name) ? true : false;
 }
 
 /* Returns true if fd represents a directory, false if it represents
@@ -388,8 +378,7 @@ bool
 isdir (int fd)
 {
   struct file *file = thread_current()->fdt[fd];
-  struct inode *inode = file_get_inode(file);
-  return !(is_inode_file (inode));
+  return !(is_inode_file (file_get_inode(file)));
 }
 
 /* Returns the inode number of the inode associated with fd, which may
@@ -400,8 +389,7 @@ int
 inumber (int fd)
 {
   struct file *file = thread_current()->fdt[fd];
-  struct inode *inode = file_get_inode(file);
-  return (int)inode_get_inumber (inode);
+  return (int)inode_get_inumber (file_get_inode(file));
 }
 
 /* Check valid address of esp, and store argument in arg. */

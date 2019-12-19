@@ -7,6 +7,7 @@
 
 #define CACHE_SECTOR_NUMBER 64
 
+/* buffer cache entry's structure */
 struct cache_entry buffer_cache[CACHE_SECTOR_NUMBER];
 
 /* Initialize buffer cache. Allocate 32KB cache memory and match it with 
@@ -29,7 +30,7 @@ bc_init(void)
 }
 
 /* Destory buffer cache. Scan cache_entries, if entry is dirty, flush it 
-	 to Disk. */
+	 to Disk. Free all the memory spaces allocated for buffer cache. */
 void
 bc_exit(void)
 {
@@ -41,6 +42,8 @@ bc_exit(void)
   }
 }
 
+/* Get next empty buffer cache. Return index of empty buffer cache. If cache
+   full. return -1. */
 static int
 get_cache_entry(void)
 {
@@ -66,7 +69,10 @@ bc_lookup(block_sector_t sector)
   return -1;
 }
 
-/* */
+/* Select victim entry to evict when cache is full. Return index of victim 
+   cache entry. Based on Clock algorithm. If buffer cache entry's clock bit
+   is true, change clock bit to false and pass. If clock bit is false, check
+   if that entry is dirty, flush it to disk and return. */
 int
 bc_select_victim (void)
 {
@@ -87,7 +93,7 @@ bc_select_victim (void)
   return 0;
 }
 
-/* */
+/* Flush buffer cache index 'index' to disk. Use block_write function. */
 void
 bc_flush_entry(int index)
 {
@@ -97,6 +103,7 @@ bc_flush_entry(int index)
   buffer_cache[index].isempty = true;
 }
 
+/* Flush all dirty sectors in buffer cache to disk. */
 void
 bc_flush_all(void)
 {
@@ -108,6 +115,9 @@ bc_flush_all(void)
   }
 }
 
+/* Read sector to buffer in buffer cache. If no such sector exist in buffer 
+   cache, allocate new buffer cache and read sector from disk to buffer 
+   cache. */
 void
 bc_read(block_sector_t sector, void *buffer, int chunk_size, int sector_ofs)
 {
@@ -126,6 +136,10 @@ bc_read(block_sector_t sector, void *buffer, int chunk_size, int sector_ofs)
   buffer_cache[index].clock = true;
 }
 
+/* Write buffer to sector in buffer cache. If no such sector exist in buffer
+   cache, allocate new buffer cache and read sector from disk to buffer cache.
+   Then, write buffer to buffer cache who have 'sector', and mark dirty bit to
+   true. */
 void
 bc_write(block_sector_t sector, const void *buffer, int chunk_size,
                                                     int sector_ofs)

@@ -10,7 +10,7 @@
 /* buffer cache entry's structure */
 struct cache_entry buffer_cache[CACHE_SECTOR_NUMBER];
 
-/* Initialize buffer cache. Allocate 32KB cache memory and match it with 
+/* Initialize buffer cache. Allocate 32KB cache memory and match it with
 	 each entry. If fail to allocate, exit(-1). Called in threads/init.c */
 void
 bc_init(void)
@@ -29,7 +29,7 @@ bc_init(void)
   }
 }
 
-/* Destory buffer cache. Scan cache_entries, if entry is dirty, flush it 
+/* Destory buffer cache. Scan cache_entries, if entry is dirty, flush it
 	 to Disk. Free all the memory spaces allocated for buffer cache. */
 void
 bc_exit(void)
@@ -38,7 +38,7 @@ bc_exit(void)
 
   int i;
   for(i=0; i < CACHE_SECTOR_NUMBER; i++){
-    free(buffer_cache[i].cache_addr); 
+    free(buffer_cache[i].cache_addr);
   }
 }
 
@@ -55,7 +55,7 @@ get_cache_entry(void)
   return -1;
 }
 
-/* Look up buffer cache and find cache_entry that has sector. If no matching 
+/* Look up buffer cache and find cache_entry that has sector. If no matching
 	 cache entry exists, return -1. */
 int
 bc_lookup(block_sector_t sector)
@@ -69,7 +69,7 @@ bc_lookup(block_sector_t sector)
   return -1;
 }
 
-/* Select victim entry to evict when cache is full. Return index of victim 
+/* Select victim entry to evict when cache is full. Return index of victim
    cache entry. Based on Clock algorithm. If buffer cache entry's clock bit
    is true, change clock bit to false and pass. If clock bit is false, check
    if that entry is dirty, flush it to disk and return. */
@@ -115,8 +115,8 @@ bc_flush_all(void)
   }
 }
 
-/* Read sector to buffer in buffer cache. If no such sector exist in buffer 
-   cache, allocate new buffer cache and read sector from disk to buffer 
+/* Read sector to buffer in buffer cache. If no such sector exist in buffer
+   cache, allocate new buffer cache and read sector from disk to buffer
    cache. */
 void
 bc_read(block_sector_t sector, void *buffer, int chunk_size, int sector_ofs)
@@ -125,7 +125,7 @@ bc_read(block_sector_t sector, void *buffer, int chunk_size, int sector_ofs)
   if (index == -1) {
     index = get_cache_entry();
     if (index == -1) {
-      index = bc_select_victim(); 
+      index = bc_select_victim();
     }
     block_read(fs_device, sector, buffer_cache[index].cache_addr);
     buffer_cache[index].sector = sector;

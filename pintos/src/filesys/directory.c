@@ -86,7 +86,7 @@ dir_get_inode (struct dir *dir)
   return dir->inode;
 }
 
-/* Check if directroy 'name' in 'dir' is empty or not. 
+/* Check if directroy 'name' in 'dir' is empty or not.
    Return true if it is empty, false otherwise. Ignore directory entries
    '.' and '..'. */
 static bool
@@ -230,9 +230,9 @@ dir_remove (struct dir *dir, const char *name)
   inode = inode_open (e.inode_sector);
   if (inode == NULL)
     goto done;
-  
+
   /* Check if target file is file or directory,
-     and if directory, check if it is empty or not. 
+     and if directory, check if it is empty or not.
      (Only empty directory can be removed.) */
   if (!is_inode_file(inode)) {
     if (!is_dir_empty(dir, name))
@@ -281,9 +281,9 @@ dir_readdir (struct dir *dir, char name[NAME_MAX + 1])
   return false;
 }
 
-/* Add two special directory entries ('.' and '..') when directory is being 
-   created. This function requires two inputs, parent directory and newly 
-   created directory. Get each directory's inode and its sector, and add 
+/* Add two special directory entries ('.' and '..') when directory is being
+   created. This function requires two inputs, parent directory and newly
+   created directory. Get each directory's inode and its sector, and add
    directory entries using dir_add() function. */
 bool
 dir_add_basic (struct dir *pdir, struct dir *chdir)

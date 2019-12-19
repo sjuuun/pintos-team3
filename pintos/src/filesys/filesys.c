@@ -63,7 +63,7 @@ parse_path(const char *name, char *filename)
     dir = dir_open_root();
     name_cp++;
     while (name_cp[0] == '/')
-      name_cp++; 
+      name_cp++;
   }
   else {
     if (thread_current()->directory == NULL) {
@@ -72,13 +72,13 @@ parse_path(const char *name, char *filename)
     }
     dir = dir_reopen(thread_current()->directory);
   }
-  
-  /* If name contains just root dir sign (/) */ 
+
+  /* If name contains just root dir sign (/) */
   if (strlen(name_cp) == 0) {
     free(tmp);
     return dir;
   }
-   
+
   /* Iterate to find how many chunks in name */
   int count = 0, i = 0;
   char *iter = name_cp;
@@ -95,7 +95,7 @@ parse_path(const char *name, char *filename)
 
   /* Parse and tokenize name */
   char *parse[count];
-  for (token = strtok_r (name_cp, "/", &save_ptr); token != NULL; 
+  for (token = strtok_r (name_cp, "/", &save_ptr); token != NULL;
         token = strtok_r (NULL, "/", &save_ptr)) {
     /* Continue if // */
     if (strlen(token) == 0)
@@ -172,7 +172,7 @@ filesys_create_dir (const char *name)
 
   success = dir_add_basic(dir, new_dir);
   dir_close (dir);
-  
+
   return success;
 }
 
@@ -189,7 +189,7 @@ filesys_open (const char *name)
   char *filename = calloc(1, strlen(name) + 1);
   struct dir *dir = parse_path(name, filename);
   struct inode *inode = NULL;
-  
+
   /* If dir doesn't exist */
   if (dir == NULL) {
     free(filename);

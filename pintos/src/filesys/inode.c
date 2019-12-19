@@ -526,7 +526,7 @@ inode_extend_file (struct inode_disk *disk_inode, off_t pos)
 static void
 free_inode_sectors (struct inode_disk *disk_inode)
 {
-  /* Free double indirect blocks if exist. */ 
+  /* Free double indirect blocks if exist. */
   if(disk_inode->double_indirect_block > 0) {
     int i = 0;
     struct inode_indirect_block *ind_block1 = malloc(sizeof *ind_block1);
